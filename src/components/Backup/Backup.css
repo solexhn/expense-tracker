@@ -1,0 +1,73 @@
+.backup-section {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.backup-section h2 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.backup-description {
+  color: #666;
+  margin-bottom: 25px;
+}
+
+.backup-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.backup-card {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.backup-card h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.backup-card p {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 15px;
+}
+
+.btn-export,
+.btn-import {
+  display: inline-block;
+  background: #3b82f6;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-weight: 500;
+}
+
+.btn-export:hover,
+.btn-import:hover {
+  background: #2563eb;
+}
+
+.btn-import {
+  cursor: pointer;
+}
+
+.warning {
+  margin-top: 10px;
+  font-size: 0.85em;
+  color: #dc2626;
+  font-weight: 500;
+}

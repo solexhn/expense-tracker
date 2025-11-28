@@ -1,0 +1,17 @@
+.income-form {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.income-form h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+button[type="submit"] {
+  width: 100%;
+  margin-top: 10px;
+}

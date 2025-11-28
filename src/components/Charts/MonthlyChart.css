@@ -1,0 +1,39 @@
+.monthly-chart {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-top: 30px;
+}
+
+.monthly-chart h2 {
+  margin-bottom: 20px;
+  color: #333;
+  text-align: center;
+}
+
+.custom-tooltip {
+  background: white;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.custom-tooltip .label {
+  margin: 0 0 5px 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.custom-tooltip .value {
+  margin: 0;
+  color: #666;
+  font-size: 1.1em;
+}
+
+.no-data {
+  text-align: center;
+  color: #999;
+  padding: 40px;
+}
