@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getGastosVariables, deleteGastoVariable, getConfig } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
-import './ExpenseList.css';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Trash2, Calendar } from 'lucide-react';
 
 const ExpenseList = ({ updateTrigger, onListChange }) => {
   const [gastos, setGastos] = useState([]);
@@ -45,42 +48,62 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
   };
 
   return (
-    <div className="expense-list">
-      <h2>Gastos Variables del Mes ({gastosMes.length})</h2>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold tracking-tight">
+          Gastos Variables del Mes
+        </h2>
+        <Badge variant="secondary" className="text-base">
+          {gastosMes.length}
+        </Badge>
+      </div>
       
       {gastosMes.length === 0 ? (
-        <p className="empty-message">No hay gastos variables este mes</p>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              No hay gastos variables este mes
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="gastos-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Concepto</th>
-                <th>Categoría</th>
-                <th>Cantidad</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gastosMes.map(gasto => (
-                <tr key={gasto.id}>
-                  <td>{formatearFecha(gasto.fecha)}</td>
-                  <td className="concepto">{gasto.concepto}</td>
-                  <td className="categoria">{gasto.categoria || '-'}</td>
-                  <td className="cantidad">{formatearMoneda(gasto.cantidad)}</td>
-                  <td>
-                    <button 
+        <div className="space-y-3">
+          {gastosMes.map(gasto => (
+            <Card key={gasto.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>{formatearFecha(gasto.fecha)}</span>
+                    </div>
+                    
+                    <h3 className="font-semibold text-lg">{gasto.concepto}</h3>
+                    
+                    {gasto.categoria && (
+                      <Badge variant="outline" className="mt-1">
+                        {gasto.categoria}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="text-xl font-bold">
+                      {formatearMoneda(gasto.cantidad)}
+                    </p>
+                    
+                    <Button
+                      variant="destructive"
+                      size="sm"
                       onClick={() => eliminar(gasto.id)}
-                      className="btn-delete"
                     >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

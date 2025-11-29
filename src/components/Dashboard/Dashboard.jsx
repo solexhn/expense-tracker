@@ -8,7 +8,7 @@ import {
 import { obtenerResumenMes, formatearMoneda } from '../../utils/calculations';
 import MonthlyChart from '../Charts/MonthlyChart';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet, Eye, EyeOff } from 'lucide-react';
 
 const Dashboard = () => {
   const [resumen, setResumen] = useState({
@@ -20,6 +20,14 @@ const Dashboard = () => {
   });
 
   const [mesActual, setMesActual] = useState('');
+  const [mostrarIngresos, setMostrarIngresos] = useState(() => {
+    const saved = localStorage.getItem('mostrarIngresos');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mostrarIngresos', JSON.stringify(mostrarIngresos));
+  }, [mostrarIngresos]);
 
   useEffect(() => {
     cargarDatos();
@@ -37,7 +45,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Resumen del Mes</h1>
         <p className="text-muted-foreground">{mesActual}</p>
@@ -47,11 +55,21 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <button
+              onClick={() => setMostrarIngresos(!mostrarIngresos)}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              aria-label={mostrarIngresos ? 'Ocultar ingresos' : 'Mostrar ingresos'}
+            >
+              {mostrarIngresos ? (
+                <Eye className="h-4 w-4 text-green-600" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatearMoneda(resumen.totalIngresos)}
+              {mostrarIngresos ? formatearMoneda(resumen.totalIngresos) : '••••••'}
             </div>
           </CardContent>
         </Card>

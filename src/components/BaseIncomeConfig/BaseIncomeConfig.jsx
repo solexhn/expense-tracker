@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 
-const ConfigForm = ({ onConfigUpdate }) => {
+const BaseIncomeConfig = ({ onConfigUpdate }) => {
   const [incomeBase, setIncomeBase] = useState(0);
 
   useEffect(() => {
@@ -23,12 +23,12 @@ const ConfigForm = ({ onConfigUpdate }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Configuración</CardTitle>
+        <CardTitle>Ingreso Base Mensual</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="income">Ingreso Base Mensual (€)</Label>
+            <Label htmlFor="income">Cantidad (€)</Label>
             <Input
               type="number"
               id="income"
@@ -36,13 +36,14 @@ const ConfigForm = ({ onConfigUpdate }) => {
               onChange={(e) => setIncomeBase(e.target.value)}
               step="0.01"
               required
+              placeholder="Ej: 2000"
             />
           </div>
-          <Button type="submit">Guardar</Button>
+          <Button type="submit">Guardar Ingreso Base</Button>
         </form>
       </CardContent>
     </Card>
   );
 };
 
-export default ConfigForm;
+export default BaseIncomeConfig;

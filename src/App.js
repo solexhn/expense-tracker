@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard/Dashboard';
-import ConfigForm from './components/ConfigForm/ConfigForm';
+import Timeline from './components/Timeline/Timeline';
+import BaseIncomeConfig from './components/BaseIncomeConfig/BaseIncomeConfig';
 import RecurringExpenseForm from './components/RecurringExpenseForm/RecurringExpenseForm';
 import RecurringExpenseList from './components/RecurringExpenseList/RecurringExpenseList';
 import ExpenseForm from './components/ExpenseForm/ExpenseForm';
@@ -19,21 +20,45 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b">
-        <div className="container mx-auto">
+      <div className="border-b bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="w-full justify-start rounded-none h-12 bg-transparent border-b-0">
-              <TabsTrigger value="dashboard" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+            <TabsList className="w-full justify-start rounded-none h-16 bg-transparent border-b-0 gap-1">
+              <TabsTrigger
+                value="dashboard"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-base px-4 py-3 h-full"
+              >
                 Dashboard
               </TabsTrigger>
-              <TabsTrigger value="config" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
-                Configuración
+              <TabsTrigger
+                value="cronograma"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-base px-4 py-3 h-full"
+              >
+                Cronograma
               </TabsTrigger>
-              <TabsTrigger value="gastos-fijos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+              <TabsTrigger
+                value="ingresos"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-base px-4 py-3 h-full"
+              >
+                Ingresos
+              </TabsTrigger>
+              <TabsTrigger
+                value="gastos-fijos"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-base px-4 py-3 h-full"
+              >
                 Gastos Fijos
               </TabsTrigger>
-              <TabsTrigger value="gastos-variables" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+              <TabsTrigger
+                value="gastos-variables"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-base px-4 py-3 h-full"
+              >
                 Gastos Variables
+              </TabsTrigger>
+              <TabsTrigger
+                value="config"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary text-base px-4 py-3 h-full"
+              >
+                Configuración
               </TabsTrigger>
             </TabsList>
 
@@ -41,26 +66,35 @@ function App() {
               <Dashboard key={updateTrigger} />
             </TabsContent>
 
-            <TabsContent value="config" className="mt-0">
-              <div className="container mx-auto p-6 space-y-6">
-                <ConfigForm onConfigUpdate={handleUpdate} />
+            <TabsContent value="cronograma" className="mt-0">
+              <Timeline updateTrigger={updateTrigger} />
+            </TabsContent>
+
+            <TabsContent value="ingresos" className="mt-0">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+                <BaseIncomeConfig onConfigUpdate={handleUpdate} />
                 <IncomeForm onIncomeAdded={handleUpdate} />
                 <IncomeList updateTrigger={updateTrigger} onListChange={handleUpdate} />
-                <Backup onDataRestored={handleUpdate} />
               </div>
             </TabsContent>
 
             <TabsContent value="gastos-fijos" className="mt-0">
-              <div className="container mx-auto p-6 space-y-6">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                 <RecurringExpenseForm onExpenseAdded={handleUpdate} />
                 <RecurringExpenseList updateTrigger={updateTrigger} onListChange={handleUpdate} />
               </div>
             </TabsContent>
 
             <TabsContent value="gastos-variables" className="mt-0">
-              <div className="container mx-auto p-6 space-y-6">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
                 <ExpenseForm onExpenseAdded={handleUpdate} />
                 <ExpenseList updateTrigger={updateTrigger} onListChange={handleUpdate} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="config" className="mt-0">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+                <Backup onDataRestored={handleUpdate} />
               </div>
             </TabsContent>
           </Tabs>
