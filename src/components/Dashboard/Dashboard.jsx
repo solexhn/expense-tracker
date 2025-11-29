@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  getConfig, 
-  getGastosFijos, 
-  getGastosVariables, 
-  getIngresos 
+import { useState, useEffect } from 'react';
+import {
+  getConfig,
+  getGastosFijos,
+  getGastosVariables,
+  getIngresos
 } from '../../utils/storage';
 import { obtenerResumenMes, formatearMoneda } from '../../utils/calculations';
 import MonthlyChart from '../Charts/MonthlyChart';
-import './Dashboard.css';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet } from 'lucide-react';
 
 const Dashboard = () => {
   const [resumen, setResumen] = useState({
@@ -36,35 +37,76 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard">
-      <h1>Resumen del Mes</h1>
-      <p className="mes-actual">{mesActual}</p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Resumen del Mes</h1>
+        <p className="text-muted-foreground">{mesActual}</p>
+      </div>
 
-      <div className="resumen-cards">
-        <div className="card ingresos">
-          <h3>Ingresos Totales</h3>
-          <p className="cantidad">{formatearMoneda(resumen.totalIngresos)}</p>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatearMoneda(resumen.totalIngresos)}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="card gastos-fijos">
-          <h3>Gastos Fijos</h3>
-          <p className="cantidad">{formatearMoneda(resumen.totalGastosFijos)}</p>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gastos Fijos</CardTitle>
+            <CreditCard className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {formatearMoneda(resumen.totalGastosFijos)}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="card gastos-variables">
-          <h3>Gastos Variables</h3>
-          <p className="cantidad">{formatearMoneda(resumen.totalGastosVariables)}</p>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gastos Variables</CardTitle>
+            <Wallet className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {formatearMoneda(resumen.totalGastosVariables)}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="card gastos-totales">
-          <h3>Gastos Totales</h3>
-          <p className="cantidad">{formatearMoneda(resumen.totalGastos)}</p>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gastos Totales</CardTitle>
+            <DollarSign className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {formatearMoneda(resumen.totalGastos)}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className={`card saldo ${resumen.saldoRestante < 0 ? 'negativo' : 'positivo'}`}>
-          <h3>Saldo Restante</h3>
-          <p className="cantidad">{formatearMoneda(resumen.saldoRestante)}</p>
-        </div>
+        <Card className={resumen.saldoRestante < 0 ? 'border-red-500' : 'border-green-500'}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saldo Restante</CardTitle>
+            {resumen.saldoRestante < 0 ? (
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            ) : (
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${resumen.saldoRestante < 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {formatearMoneda(resumen.saldoRestante)}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <MonthlyChart resumen={resumen} />

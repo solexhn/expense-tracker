@@ -1,15 +1,13 @@
-import React from 'react';
-import { 
-  getConfig, 
-  getGastosFijos, 
-  getGastosVariables, 
+import {
+  getConfig,
+  getGastosFijos,
+  getGastosVariables,
   getIngresos,
-  saveConfig,
-  saveGastoFijo,
-  saveGastoVariable,
-  saveIngreso
+  saveConfig
 } from '../../utils/storage';
-import './Backup.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Download, Upload } from 'lucide-react';
 
 const Backup = ({ onDataRestored }) => {
   
@@ -93,37 +91,65 @@ const Backup = ({ onDataRestored }) => {
   };
 
   return (
-    <div className="backup-section">
-      <h2>Backup de Datos</h2>
-      <p className="backup-description">
-        Descarga una copia de seguridad de todos tus datos o restaura un backup anterior.
-      </p>
-      
-      <div className="backup-actions">
-        <div className="backup-card">
-          <h3>📥 Exportar Datos</h3>
-          <p>Descarga todos tus datos en un archivo JSON.</p>
-          <button onClick={exportarDatos} className="btn-export">
-            Descargar Backup
-          </button>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Backup de Datos</CardTitle>
+        <CardDescription>
+          Descarga una copia de seguridad de todos tus datos o restaura un backup anterior.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Exportar Datos
+              </CardTitle>
+              <CardDescription>
+                Descarga todos tus datos en un archivo JSON.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={exportarDatos} className="w-full">
+                <Download className="mr-2 h-4 w-4" />
+                Descargar Backup
+              </Button>
+            </CardContent>
+          </Card>
 
-        <div className="backup-card">
-          <h3>📤 Importar Datos</h3>
-          <p>Restaura datos desde un archivo de backup.</p>
-          <label className="btn-import">
-            Seleccionar Archivo
-            <input 
-              type="file" 
-              accept=".json" 
-              onChange={importarDatos}
-              style={{ display: 'none' }}
-            />
-          </label>
-          <p className="warning">⚠️ Sobrescribirá tus datos actuales</p>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Importar Datos
+              </CardTitle>
+              <CardDescription>
+                Restaura datos desde un archivo de backup.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <label htmlFor="file-upload">
+                <Button variant="outline" className="w-full cursor-pointer" asChild>
+                  <span>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Seleccionar Archivo
+                  </span>
+                </Button>
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept=".json"
+                  onChange={importarDatos}
+                  className="hidden"
+                />
+              </label>
+              <p className="text-sm text-destructive">⚠️ Sobrescribirá tus datos actuales</p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

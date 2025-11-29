@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { saveGastoVariable } from '../../utils/storage';
-import './ExpenseForm.css';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
 
 const ExpenseForm = ({ onExpenseAdded }) => {
   const [formData, setFormData] = useState({
@@ -20,7 +23,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const nuevoGasto = {
       fecha: formData.fecha,
       concepto: formData.concepto,
@@ -29,7 +32,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     };
 
     saveGastoVariable(nuevoGasto);
-    
+
     // Limpiar formulario (mantener fecha actual)
     setFormData({
       fecha: new Date().toISOString().slice(0, 10),
@@ -42,61 +45,69 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   };
 
   return (
-    <div className="expense-form">
-      <h2>Añadir Gasto Variable</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="form-group">
-            <label>Fecha *</label>
-            <input
-              type="date"
-              name="fecha"
-              value={formData.fecha}
-              onChange={handleChange}
-              required
-            />
+    <Card>
+      <CardHeader>
+        <CardTitle>Añadir Gasto Variable</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fecha">Fecha *</Label>
+              <Input
+                type="date"
+                id="fecha"
+                name="fecha"
+                value={formData.fecha}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="concepto">Concepto *</Label>
+              <Input
+                type="text"
+                id="concepto"
+                name="concepto"
+                value={formData.concepto}
+                onChange={handleChange}
+                placeholder="Ej: Supermercado, Gasolina"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cantidad">Cantidad (€) *</Label>
+              <Input
+                type="number"
+                id="cantidad"
+                name="cantidad"
+                value={formData.cantidad}
+                onChange={handleChange}
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoria">Categoría</Label>
+              <Input
+                type="text"
+                id="categoria"
+                name="categoria"
+                value={formData.categoria}
+                onChange={handleChange}
+                placeholder="Ej: alimentación, ocio"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Concepto *</label>
-            <input
-              type="text"
-              name="concepto"
-              value={formData.concepto}
-              onChange={handleChange}
-              placeholder="Ej: Supermercado, Gasolina"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Cantidad (€) *</label>
-            <input
-              type="number"
-              name="cantidad"
-              value={formData.cantidad}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="0.00"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Categoría</label>
-            <input
-              type="text"
-              name="categoria"
-              value={formData.categoria}
-              onChange={handleChange}
-              placeholder="Ej: alimentación, ocio"
-            />
-          </div>
-        </div>
-
-        <button type="submit">Añadir Gasto</button>
-      </form>
-    </div>
+          <Button type="submit">Añadir Gasto</Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

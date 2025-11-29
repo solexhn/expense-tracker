@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getConfig, saveConfig } from '../../utils/storage';
-import './ConfigForm.css';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
 
 const ConfigForm = ({ onConfigUpdate }) => {
   const [incomeBase, setIncomeBase] = useState(0);
@@ -18,23 +21,27 @@ const ConfigForm = ({ onConfigUpdate }) => {
   };
 
   return (
-    <div className="config-form">
-      <h2>Configuración</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="income">Ingreso Base Mensual (€)</label>
-          <input
-            type="number"
-            id="income"
-            value={incomeBase}
-            onChange={(e) => setIncomeBase(e.target.value)}
-            step="0.01"
-            required
-          />
-        </div>
-        <button type="submit">Guardar</button>
-      </form>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Configuración</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="income">Ingreso Base Mensual (€)</Label>
+            <Input
+              type="number"
+              id="income"
+              value={incomeBase}
+              onChange={(e) => setIncomeBase(e.target.value)}
+              step="0.01"
+              required
+            />
+          </div>
+          <Button type="submit">Guardar</Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

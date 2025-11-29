@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { saveGastoFijo } from '../../utils/storage';
-import './RecurringExpenseForm.css';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
 
 const RecurringExpenseForm = ({ onExpenseAdded }) => {
   const [formData, setFormData] = useState({
@@ -57,114 +60,131 @@ const RecurringExpenseForm = ({ onExpenseAdded }) => {
   const esCredito = formData.tipo === 'credito';
 
   return (
-    <div className="recurring-expense-form">
-      <h2>Añadir Gasto Fijo/Recurrente</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="form-group">
-            <label>Nombre *</label>
-            <input
-              type="text"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleChange}
-              placeholder="Ej: Netflix, Luz, Crédito coche"
-              required
-            />
-          </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Añadir Gasto Fijo/Recurrente</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nombre">Nombre *</Label>
+              <Input
+                type="text"
+                id="nombre"
+                name="nombre"
+                value={formData.nombre}
+                onChange={handleChange}
+                placeholder="Ej: Netflix, Luz, Crédito coche"
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Cantidad (€) *</label>
-            <input
-              type="number"
-              name="cantidad"
-              value={formData.cantidad}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="0.00"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label>Día del mes *</label>
-            <input
-              type="number"
-              name="diaDelMes"
-              value={formData.diaDelMes}
-              onChange={handleChange}
-              min="1"
-              max="31"
-              placeholder="1-31"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Tipo *</label>
-            <select name="tipo" value={formData.tipo} onChange={handleChange}>
-              <option value="suscripcion">Suscripción</option>
-              <option value="credito">Crédito</option>
-              <option value="servicio">Servicio</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Categoría</label>
-            <input
-              type="text"
-              name="categoria"
-              value={formData.categoria}
-              onChange={handleChange}
-              placeholder="Ej: entretenimiento, hogar"
-            />
-          </div>
-        </div>
-
-        {esCredito && (
-          <div className="form-row credito-fields">
-            <div className="form-group">
-              <label>Cuotas Restantes</label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="cantidad">Cantidad (€) *</Label>
+              <Input
                 type="number"
-                name="cuotasRestantes"
-                value={formData.cuotasRestantes}
+                id="cantidad"
+                name="cantidad"
+                value={formData.cantidad}
                 onChange={handleChange}
-                min="0"
-                placeholder="Ej: 18"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Cuotas Totales</label>
-              <input
-                type="number"
-                name="cuotasTotales"
-                value={formData.cuotasTotales}
-                onChange={handleChange}
-                min="0"
-                placeholder="Ej: 24"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Fecha Inicio</label>
-              <input
-                type="date"
-                name="fechaInicio"
-                value={formData.fechaInicio}
-                onChange={handleChange}
+                step="0.01"
+                placeholder="0.00"
+                required
               />
             </div>
           </div>
-        )}
 
-        <button type="submit">Añadir Gasto Fijo</button>
-      </form>
-    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="diaDelMes">Día del mes *</Label>
+              <Input
+                type="number"
+                id="diaDelMes"
+                name="diaDelMes"
+                value={formData.diaDelMes}
+                onChange={handleChange}
+                min="1"
+                max="31"
+                placeholder="1-31"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tipo">Tipo *</Label>
+              <select
+                id="tipo"
+                name="tipo"
+                value={formData.tipo}
+                onChange={handleChange}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="suscripcion">Suscripción</option>
+                <option value="credito">Crédito</option>
+                <option value="servicio">Servicio</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoria">Categoría</Label>
+              <Input
+                type="text"
+                id="categoria"
+                name="categoria"
+                value={formData.categoria}
+                onChange={handleChange}
+                placeholder="Ej: entretenimiento, hogar"
+              />
+            </div>
+          </div>
+
+          {esCredito && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="cuotasRestantes">Cuotas Restantes</Label>
+                <Input
+                  type="number"
+                  id="cuotasRestantes"
+                  name="cuotasRestantes"
+                  value={formData.cuotasRestantes}
+                  onChange={handleChange}
+                  min="0"
+                  placeholder="Ej: 18"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cuotasTotales">Cuotas Totales</Label>
+                <Input
+                  type="number"
+                  id="cuotasTotales"
+                  name="cuotasTotales"
+                  value={formData.cuotasTotales}
+                  onChange={handleChange}
+                  min="0"
+                  placeholder="Ej: 24"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fechaInicio">Fecha Inicio</Label>
+                <Input
+                  type="date"
+                  id="fechaInicio"
+                  name="fechaInicio"
+                  value={formData.fechaInicio}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          )}
+
+          <Button type="submit">Añadir Gasto Fijo</Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { saveIngreso } from '../../utils/storage';
-import './IncomeForm.css';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
 
 const IncomeForm = ({ onIncomeAdded }) => {
   const [formData, setFormData] = useState({
@@ -20,7 +23,7 @@ const IncomeForm = ({ onIncomeAdded }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     const nuevoIngreso = {
       fecha: formData.fecha,
       concepto: formData.concepto,
@@ -29,7 +32,7 @@ const IncomeForm = ({ onIncomeAdded }) => {
     };
 
     saveIngreso(nuevoIngreso);
-    
+
     // Limpiar formulario (mantener fecha actual)
     setFormData({
       fecha: new Date().toISOString().slice(0, 10),
@@ -42,58 +45,71 @@ const IncomeForm = ({ onIncomeAdded }) => {
   };
 
   return (
-    <div className="income-form">
-      <h2>Añadir Ingreso</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <div className="form-group">
-            <label>Fecha *</label>
-            <input
-              type="date"
-              name="fecha"
-              value={formData.fecha}
-              onChange={handleChange}
-              required
-            />
+    <Card>
+      <CardHeader>
+        <CardTitle>Añadir Ingreso</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="fecha">Fecha *</Label>
+              <Input
+                type="date"
+                id="fecha"
+                name="fecha"
+                value={formData.fecha}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="concepto">Concepto *</Label>
+              <Input
+                type="text"
+                id="concepto"
+                name="concepto"
+                value={formData.concepto}
+                onChange={handleChange}
+                placeholder="Ej: Gasolina compa, Venta móvil"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cantidad">Cantidad (€) *</Label>
+              <Input
+                type="number"
+                id="cantidad"
+                name="cantidad"
+                value={formData.cantidad}
+                onChange={handleChange}
+                step="0.01"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tipo">Tipo *</Label>
+              <select
+                id="tipo"
+                name="tipo"
+                value={formData.tipo}
+                onChange={handleChange}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="puntual">Puntual</option>
+                <option value="recurrente">Recurrente</option>
+              </select>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Concepto *</label>
-            <input
-              type="text"
-              name="concepto"
-              value={formData.concepto}
-              onChange={handleChange}
-              placeholder="Ej: Gasolina compa, Venta móvil"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Cantidad (€) *</label>
-            <input
-              type="number"
-              name="cantidad"
-              value={formData.cantidad}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="0.00"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Tipo *</label>
-            <select name="tipo" value={formData.tipo} onChange={handleChange}>
-              <option value="puntual">Puntual</option>
-              <option value="recurrente">Recurrente</option>
-            </select>
-          </div>
-        </div>
-
-        <button type="submit">Añadir Ingreso</button>
-      </form>
-    </div>
+          <Button type="submit">Añadir Ingreso</Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
