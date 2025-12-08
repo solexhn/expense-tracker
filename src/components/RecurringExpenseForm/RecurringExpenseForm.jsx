@@ -109,6 +109,7 @@ const RecurringExpenseForm = ({ onExpenseAdded }) => {
                 placeholder="1-31"
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">Si indicas día 31 y el mes tiene menos días, el cobro se realizará el último día del mes.</p>
             </div>
 
             <div className="space-y-2">

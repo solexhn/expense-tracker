@@ -1,3 +1,5 @@
+import React from 'react';
+
 import {
   getConfig,
   getGastosFijos,
@@ -5,11 +7,35 @@ import {
   getIngresos,
   saveConfig
 } from '../../utils/storage';
+import { getClasificacionCategorias, saveClasificacionCategorias } from '../../utils/storage';
+import { CLASIFICACION_CATEGORIAS } from '../../utils/financialAnalysis';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Download, Upload } from 'lucide-react';
 
 const Backup = ({ onDataRestored }) => {
+  // Categorías personalizables
+  const [categorias, setCategorias] = React.useState(() => {
+    const custom = getClasificacionCategorias();
+    return custom || CLASIFICACION_CATEGORIAS;
+  });
+
+  const handleCategoriasChange = (key, value) => {
+    setCategorias(prev => ({ ...prev, [key]: value }));
+  };
+
+  const guardarCategorias = () => {
+    // normalizar: asegurar arrays
+    const normalized = Object.fromEntries(Object.entries(categorias).map(([k,v]) => [k, Array.isArray(v) ? v : String(v).split(',').map(s => s.trim()).filter(Boolean)]));
+    saveClasificacionCategorias(normalized);
+    alert('Categorías guardadas');
+  };
+
+  const resetCategorias = () => {
+    setCategorias(CLASIFICACION_CATEGORIAS);
+    saveClasificacionCategorias(CLASIFICACION_CATEGORIAS);
+    alert('Categorías reseteadas a valores por defecto');
+  };
   
   const exportarDatos = () => {
     const datos = {
@@ -115,6 +141,42 @@ const Backup = ({ onDataRestored }) => {
                 <Download className="mr-2 h-4 w-4" />
                 Descargar Backup
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Categorías Personalizables */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Categorías Personalizables</CardTitle>
+              <CardDescription>
+                Edita las listas de palabras clave para la clasificación automática. Se guardan como listas separadas por comas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Necesidades</label>
+                <textarea className="w-full p-2 border border-input bg-background text-foreground rounded" rows={2} value={Array.isArray(categorias.necesidades) ? categorias.necesidades.join(', ') : categorias.necesidades} onChange={(e) => handleCategoriasChange('necesidades', e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Deseos</label>
+                <textarea className="w-full p-2 border border-input bg-background text-foreground rounded" rows={2} value={Array.isArray(categorias.deseos) ? categorias.deseos.join(', ') : categorias.deseos} onChange={(e) => handleCategoriasChange('deseos', e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Deudas</label>
+                <textarea className="w-full p-2 border border-input bg-background text-foreground rounded" rows={2} value={Array.isArray(categorias.deudas) ? categorias.deudas.join(', ') : categorias.deudas} onChange={(e) => handleCategoriasChange('deudas', e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ahorro</label>
+                <textarea className="w-full p-2 border border-input bg-background text-foreground rounded" rows={2} value={Array.isArray(categorias.ahorro) ? categorias.ahorro.join(', ') : categorias.ahorro} onChange={(e) => handleCategoriasChange('ahorro', e.target.value)} />
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={guardarCategorias}>Guardar Categorías</Button>
+                <Button variant="outline" onClick={resetCategorias}>Reset</Button>
+              </div>
             </CardContent>
           </Card>
 

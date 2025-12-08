@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   getConfig,
+  saveConfig,
   getGastosFijos,
   getGastosVariables,
   getIngresos
 } from '../../utils/storage';
-import { obtenerResumenMes, formatearMoneda } from '../../utils/calculations';
+import { obtenerResumenMes, formatearMoneda, calcularDiaRealCobro } from '../../utils/calculations';
 import MonthlyChart from '../Charts/MonthlyChart';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet, Eye, EyeOff } from 'lucide-react';
@@ -25,15 +26,45 @@ const Dashboard = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  const [mesesDisponibles, setMesesDisponibles] = useState([]);
+  const [notificaciones, setNotificaciones] = useState([]);
+
   useEffect(() => {
     localStorage.setItem('mostrarIngresos', JSON.stringify(mostrarIngresos));
   }, [mostrarIngresos]);
 
-  useEffect(() => {
-    cargarDatos();
+  const obtenerMesesDisponibles = useCallback(() => {
+    const gastosVariables = getGastosVariables();
+    const ingresos = getIngresos();
+
+    const fechas = new Set();
+
+    // Extraer meses de gastos variables
+    gastosVariables.forEach(g => {
+      if (g.fecha) {
+        fechas.add(g.fecha.substring(0, 7));
+      }
+    });
+
+    // Extraer meses de ingresos
+    ingresos.forEach(i => {
+      if (i.fecha) {
+        fechas.add(i.fecha.substring(0, 7));
+      }
+    });
+
+    // Convertir Set a array y ordenar (mas reciente primero)
+    const meses = Array.from(fechas).sort((a, b) => b.localeCompare(a));
+
+    // Si no hay meses, agregar el mes actual
+    if (meses.length === 0) {
+      meses.push(new Date().toISOString().slice(0, 7));
+    }
+
+    return meses;
   }, []);
 
-  const cargarDatos = () => {
+  const cargarDatos = useCallback(() => {
     const config = getConfig();
     const gastosFijos = getGastosFijos();
     const gastosVariables = getGastosVariables();
@@ -41,14 +72,78 @@ const Dashboard = () => {
 
     const resumenCalculado = obtenerResumenMes(config, gastosFijos, gastosVariables, ingresos);
     setResumen(resumenCalculado);
-    setMesActual(config.mesActual);
+    setMesActual(config.mesReferencia || config.mesActual);
+    setMesesDisponibles(obtenerMesesDisponibles());
+
+    // notificaciones simples
+    const hoy = new Date();
+    const añoHoy = hoy.getFullYear();
+    const mesHoy = hoy.getMonth() + 1; // 1..12
+    const diaHoy = hoy.getDate();
+
+    const notify = [];
+    // comprobar gastos fijos que se cobran hoy
+    gastosFijos.forEach(g => {
+      if (g.estado !== 'activo') return;
+      const diaReal = calcularDiaRealCobro(g.diaDelMes, añoHoy, mesHoy);
+      if (diaReal === diaHoy) {
+        notify.push({ type: 'cobro', text: `Hoy se cobra ${g.nombre} — ${formatearMoneda(g.cantidad)}` });
+      }
+    });
+
+    // aviso de saldo restante
+    notify.push({ type: 'saldo', text: `Te quedan ${formatearMoneda(resumenCalculado.saldoRestante)} para el mes` });
+
+    setNotificaciones(notify);
+  }, [obtenerMesesDisponibles]);
+
+  const handleMesChange = (nuevoMes) => {
+    const config = getConfig();
+
+    // Actualizar ambos campos para compatibilidad
+    const nuevoConfig = {
+      ...config,
+      mesActual: nuevoMes,
+      mesReferencia: nuevoMes
+    };
+
+    saveConfig(nuevoConfig);
+
+    // Recargar datos
+    cargarDatos();
   };
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Resumen del Mes</h1>
-        <p className="text-muted-foreground">{mesActual}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Resumen del Mes</h1>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="mes-selector" className="text-sm text-muted-foreground">
+              Mes:
+            </label>
+            <select
+              id="mes-selector"
+              value={mesActual}
+              onChange={(e) => handleMesChange(e.target.value)}
+              className="px-3 py-2 border border-input bg-background text-foreground rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {mesesDisponibles.map(mes => (
+                <option key={mes} value={mes}>
+                  {new Date(mes + '-01').toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long'
+                  })}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -126,6 +221,23 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {notificaciones.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notificaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {notificaciones.map((n, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <div className="text-sm text-foreground">{n.text}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <MonthlyChart resumen={resumen} />
     </div>

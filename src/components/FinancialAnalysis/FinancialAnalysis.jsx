@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import {
@@ -8,8 +8,10 @@ import {
   Info,
   Target,
   PieChart,
+  Wallet,
+  CreditCard,
 } from 'lucide-react';
-import { analizarDistribucionFinanciera } from '../../utils/financialAnalysis';
+import { analizarDistribucionFinanciera, calcularProyeccionDeudas } from '../../utils/financialAnalysis';
 import { getConfig, getGastosFijos, getGastosVariables, getIngresos } from '../../utils/storage';
 import { calcularTotalIngresos } from '../../utils/calculations';
 
@@ -21,28 +23,31 @@ import { calcularTotalIngresos } from '../../utils/calculations';
  */
 const FinancialAnalysis = ({ updateTrigger }) => {
   const [analisis, setAnalisis] = useState(null);
+  const [mesSeleccionado, setMesSeleccionado] = useState(null);
+  const [proyeccionDeudas, setProyeccionDeudas] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    cargarAnalisis();
-  }, [updateTrigger]);
-
-  const cargarAnalisis = () => {
+  const cargarAnalisis = useCallback(() => {
     try {
       setLoading(true);
 
       // Obtener datos del storage
       const config = getConfig();
+      const defaultMes = mesSeleccionado || config.mesActual || config.mesReferencia;
       const gastosFijos = getGastosFijos().filter((g) => g.estado === 'activo');
+
+      // Calcular proyección de deudas
+      const proyeccion = calcularProyeccionDeudas(gastosFijos);
+      setProyeccionDeudas(proyeccion);
       const gastosVariables = getGastosVariables().filter((g) =>
-        g.fecha.startsWith(config.mesActual)
+        g.fecha.startsWith(defaultMes)
       );
       const ingresosAdicionales = getIngresos().filter((i) =>
-        i.fecha.startsWith(config.mesActual)
+        i.fecha.startsWith(defaultMes)
       );
 
       // Calcular ingresos totales
-      const ingresosTotales = parseFloat(config.incomeBase || 0) + calcularTotalIngresos(ingresosAdicionales, config.mesActual);
+      const ingresosTotales = parseFloat(config.incomeBase || 0) + calcularTotalIngresos(ingresosAdicionales, defaultMes);
 
       // Validar que haya ingresos
       if (ingresosTotales <= 0) {
@@ -75,7 +80,40 @@ const FinancialAnalysis = ({ updateTrigger }) => {
     } finally {
       setLoading(false);
     }
+  }, [mesSeleccionado]);
+
+  // construir lista de meses disponibles para selección
+  const construirMesesDisponibles = () => {
+    const config = getConfig();
+    const mesesSet = new Set();
+    // añadir mes de referencia
+    mesesSet.add(config.mesActual || config.mesReferencia);
+
+    getGastosVariables().forEach(g => {
+      if (g.fecha) mesesSet.add(g.fecha.slice(0,7));
+    });
+
+    getIngresos().forEach(i => {
+      if (i.fecha) mesesSet.add(i.fecha.slice(0,7));
+    });
+
+    const meses = Array.from(mesesSet).filter(Boolean).sort().reverse();
+    return meses;
   };
+
+  const formatMesLabel = (mes) => {
+    try {
+      const [y,m] = mes.split('-');
+      const d = new Date(parseInt(y,10), parseInt(m,10)-1, 1);
+      return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    } catch (err) {
+      return mes;
+    }
+  };
+
+  useEffect(() => {
+    cargarAnalisis();
+  }, [cargarAnalisis]);
 
   if (loading) {
     return (
@@ -141,12 +179,97 @@ const FinancialAnalysis = ({ updateTrigger }) => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <PieChart className="h-6 w-6" />
-        <h1 className="text-3xl font-bold tracking-tight">Análisis Financiero</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <PieChart className="h-6 w-6" />
+          <h1 className="text-3xl font-bold tracking-tight">Análisis Financiero</h1>
+        </div>
+        <div>
+          <select
+            value={mesSeleccionado || getConfig().mesActual || getConfig().mesReferencia}
+            onChange={(e) => setMesSeleccionado(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            {construirMesesDisponibles().map((m) => (
+              <option key={m} value={m}>{formatMesLabel(m)}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Resumen general */}
+      {/* NUEVA SECCIÓN: ¿Cuánto me queda para gastar? */}
+      <Card className="border-2 border-blue-500/20 bg-blue-500/5">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-blue-900 dark:text-blue-100">💰 Tu Presupuesto Este Mes</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Disponible AHORA */}
+            <div className="bg-card p-4 rounded-lg border-2 border-green-500/30">
+              <p className="text-sm text-muted-foreground mb-1">💵 Disponible ahora</p>
+              <p className={`text-4xl font-bold ${analisis.presupuestoDisponible.disponibleAhora >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {analisis.presupuestoDisponible.disponibleAhora.toFixed(2)} €
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Ingresos - Gastos fijos - Ya gastado
+              </p>
+            </div>
+
+            {/* Recomendación: cuánto gastar */}
+            <div className="bg-card p-4 rounded-lg border-2 border-blue-500/30">
+              <p className="text-sm text-muted-foreground mb-1">🎯 Puedes gastar (con ahorro)</p>
+              <p className={`text-4xl font-bold ${analisis.presupuestoDisponible.disponibleParaGastar >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                {analisis.presupuestoDisponible.disponibleParaGastar.toFixed(2)} €
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Reservando {analisis.presupuestoDisponible.ahorroRecomendado.toFixed(2)}€ para ahorro (10%)
+              </p>
+            </div>
+          </div>
+
+          {/* Presupuestos por categoría */}
+          <div className="bg-card p-4 rounded-lg space-y-3 border border-border">
+            <h4 className="font-semibold text-sm">Presupuestos Sugeridos vs Gastado</h4>
+
+            {/* Necesidades */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>🏠 Necesidades</span>
+                <span className={analisis.presupuestoDisponible.excedioPresupuestoNecesidades ? 'text-red-600 dark:text-red-400 font-bold' : 'text-green-600 dark:text-green-400'}>
+                  {analisis.presupuestoDisponible.gastadoNecesidades.toFixed(2)}€ / {analisis.presupuestoDisponible.presupuestoNecesidades.toFixed(2)}€
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${analisis.presupuestoDisponible.excedioPresupuestoNecesidades ? 'bg-red-500' : 'bg-blue-500'}`}
+                  style={{width: `${Math.min((analisis.presupuestoDisponible.gastadoNecesidades / analisis.presupuestoDisponible.presupuestoNecesidades) * 100, 100)}%`}}
+                />
+              </div>
+            </div>
+
+            {/* Ocio */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>🎮 Ocio/Deseos</span>
+                <span className={analisis.presupuestoDisponible.excedioPresupuestoOcio ? 'text-red-600 dark:text-red-400 font-bold' : 'text-green-600 dark:text-green-400'}>
+                  {analisis.presupuestoDisponible.gastadoOcio.toFixed(2)}€ / {analisis.presupuestoDisponible.presupuestoOcio.toFixed(2)}€
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${analisis.presupuestoDisponible.excedioPresupuestoOcio ? 'bg-red-500' : 'bg-purple-500'}`}
+                  style={{width: `${Math.min((analisis.presupuestoDisponible.gastadoOcio / analisis.presupuestoDisponible.presupuestoOcio) * 100, 100)}%`}}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Resumen general (simplificado) */}
       <Card>
         <CardHeader>
           <CardTitle>Resumen Mensual</CardTitle>
@@ -160,19 +283,23 @@ const FinancialAnalysis = ({ updateTrigger }) => {
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Gastado</p>
-              <p className="text-2xl font-bold">
-                {analisis.totalGastos.toFixed(2)} €
+              <p className="text-sm text-muted-foreground">Gastos Fijos (obligatorios)</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {analisis.presupuestoDisponible.gastosFijos.toFixed(2)} €
               </p>
+              <p className="text-xs text-muted-foreground">Necesidades + Deudas</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Restante</p>
+              <p className="text-sm text-muted-foreground">Ahorro Real</p>
               <p
                 className={`text-2xl font-bold ${
-                  analisis.restante >= 0 ? 'text-green-600' : 'text-red-600'
+                  analisis.restante >= analisis.presupuestoDisponible.ahorroRecomendado ? 'text-green-600' : 'text-orange-600'
                 }`}
               >
                 {analisis.restante.toFixed(2)} €
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {analisis.presupuestoDisponible.cumpleAhorroMinimo ? '✅ Cumples el 10%' : '⚠️ Por debajo del 10%'}
               </p>
             </div>
           </div>
@@ -287,6 +414,42 @@ const FinancialAnalysis = ({ updateTrigger }) => {
             )}
           </div>
 
+          {/* Deudas */}
+          {analisis.desglose.deudas && analisis.desglose.deudas.total > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-600 rounded-full" />
+                  <span className="font-medium">Deudas/Créditos</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-red-600">
+                    {analisis.desglose.deudas.porcentaje.toFixed(1)}%
+                  </span>
+                  <span className="text-sm text-muted-foreground ml-2">
+                    (Mantener &lt; 30%)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-red-600 transition-all"
+                    style={{
+                      width: `${Math.min(analisis.desglose.deudas.porcentaje, 100)}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-sm font-medium w-20 text-right">
+                  {analisis.desglose.deudas.total.toFixed(2)} €
+                </span>
+              </div>
+              <p className="text-xs text-red-600 mt-1 font-medium">
+                Pagos mensuales de créditos y financiación
+              </p>
+            </div>
+          )}
+
           {/* Ahorro */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -324,6 +487,39 @@ const FinancialAnalysis = ({ updateTrigger }) => {
               </p>
             )}
           </div>
+
+          {/* Gastos sin clasificar */}
+          {analisis.desglose.sin_clasificar && analisis.desglose.sin_clasificar.total > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-gray-400 rounded-full" />
+                  <span className="font-medium">Sin clasificar</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-gray-600">
+                    {analisis.desglose.sin_clasificar.porcentaje.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gray-400 transition-all"
+                    style={{
+                      width: `${Math.min(analisis.desglose.sin_clasificar.porcentaje, 100)}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-sm font-medium w-20 text-right">
+                  {analisis.desglose.sin_clasificar.total.toFixed(2)} €
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Asigna categorías a estos gastos para mejor análisis
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -357,6 +553,77 @@ const FinancialAnalysis = ({ updateTrigger }) => {
                   {analisis.prediccion.promedioDiario.toFixed(2)} €
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Proyección de deudas */}
+      {proyeccionDeudas && proyeccionDeudas.tieneDeudas && (
+        <Card className="border-2 border-orange-500/20 bg-orange-500/5">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              <CardTitle className="text-orange-900 dark:text-orange-100">📅 Plan de Salida de Deudas</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-card p-4 rounded-lg border border-border">
+              <p className="text-sm text-muted-foreground mb-2">Resumen de deudas activas</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total de créditos</p>
+                  <p className="text-2xl font-bold">{proyeccionDeudas.totalDeudas}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Pago mensual total</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {proyeccionDeudas.pagoMensualTotal.toFixed(2)} €
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {proyeccionDeudas.proximaATerminar && (
+              <div className="bg-green-500/10 border-2 border-green-500/30 p-4 rounded-lg">
+                <p className="font-semibold text-green-900 dark:text-green-100 mb-2">
+                  🎯 Próximo crédito a terminar
+                </p>
+                <div className="space-y-1">
+                  <p className="text-lg font-bold">{proyeccionDeudas.proximaATerminar.nombre}</p>
+                  <p className="text-sm">
+                    En <span className="font-bold">{proyeccionDeudas.proximaATerminar.cuotasRestantes} meses</span> liberarás{' '}
+                    <span className="font-bold text-green-700 dark:text-green-400">{proyeccionDeudas.proximaATerminar.cantidad.toFixed(2)} €/mes</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-card p-4 rounded-lg space-y-3 border border-border">
+              <h4 className="font-semibold text-sm">Calendario de liberación</h4>
+              {proyeccionDeudas.todasLasDeudas.map((deuda, index) => (
+                <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{deuda.nombre}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {deuda.cuotasRestantes} meses restantes
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-sm">{deuda.cuotaMensual.toFixed(2)} €/mes</p>
+                    <p className="text-xs text-green-600">+{deuda.dineroQueSeLibera.toFixed(2)} € al terminar</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-blue-100 border-2 border-blue-300 p-4 rounded-lg">
+              <p className="text-sm font-semibold text-blue-900 mb-2">💡 Estrategia recomendada</p>
+              <ul className="text-sm space-y-1 text-blue-800">
+                <li>• Cuando termines un crédito, NO adquieras nuevos gastos</li>
+                <li>• Destina ese dinero a ahorrar o pagar otras deudas</li>
+                <li>• Al final liberarás {proyeccionDeudas.pagoMensualTotal.toFixed(2)}€/mes</li>
+              </ul>
             </div>
           </CardContent>
         </Card>

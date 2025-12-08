@@ -71,31 +71,31 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {gastos.map(gasto => {
             const config = estadoConfig[gasto.estado] || estadoConfig.activo;
             const IconComponent = config.icon;
             
             return (
-              <Card key={gasto.id} className="relative">
-                <CardHeader>
+              <Card key={gasto.id} className="relative py-2 px-3">
+                <CardHeader className="py-2 px-0">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg">{gasto.nombre}</CardTitle>
-                    <Badge className={config.badgeClass}>
+                    <CardTitle className="text-sm font-semibold">{gasto.nombre}</CardTitle>
+                    <Badge className={`${config.badgeClass} text-xs px-2 py-0.5`}>
                       <IconComponent className="h-3 w-3 mr-1" />
                       {config.label}
                     </Badge>
                   </div>
                 </CardHeader>
-                
-                <CardContent className="space-y-3">
+
+                <CardContent className="space-y-2 py-2 px-0">
                   {/* Cantidad principal */}
-                  <p className="text-2xl font-bold">
+                  <p className="text-lg font-semibold">
                     {formatearMoneda(gasto.cantidad)}
                   </p>
                   
                   {/* Información del gasto */}
-                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="space-y-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
                       <span>Día {gasto.diaDelMes} de cada mes</span>
@@ -153,7 +153,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                     
                     <Button
                       variant="destructive"
-                      size="sm"
+                      size="icon"
                       onClick={() => eliminar(gasto.id)}
                     >
                       <Trash2 className="h-4 w-4" />

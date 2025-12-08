@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getConfig, getGastosFijos, getGastosVariables, getIngresos } from '../../utils/storage';
-import { formatearMoneda } from '../../utils/calculations';
+import { formatearMoneda, calcularDiaRealCobro } from '../../utils/calculations';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { TrendingUp, TrendingDown, Calendar } from 'lucide-react';
@@ -20,7 +20,8 @@ const Timeline = ({ updateTrigger }) => {
 
   const cargarEventos = () => {
     const config = getConfig();
-    const mesActual = config.mesActual;
+    // Usar mesReferencia o mesActual para filtrar
+    const mesActual = config.mesReferencia || config.mesActual;
     const año = parseInt(mesActual.split('-')[0]);
     const mes = parseInt(mesActual.split('-')[1]);
 
@@ -57,8 +58,9 @@ const Timeline = ({ updateTrigger }) => {
     // Gastos fijos (usar su día del mes configurado)
     gastosFijos.forEach(gasto => {
       // Asegurar que el día no exceda los días del mes
-      const diasEnMes = new Date(año, mes, 0).getDate();
-      const dia = Math.min(gasto.diaDelMes, diasEnMes);
+      // Calcular día real de cobro (si día configurado > último día del mes,
+      // usar el último día del mes)
+      const dia = calcularDiaRealCobro(gasto.diaDelMes, año, mes);
       const diaFormateado = dia.toString().padStart(2, '0');
 
       todosEventos.push({

@@ -4,6 +4,7 @@ const KEYS = {
   GASTOS_VARIABLES: 'gastosVariables',
   INGRESOS: 'ingresos',
   CONFIG: 'config'
+  ,CLASIFICACION_CATEGORIAS: 'clasificacionCategorias'
 };
 
 // ============ FUNCIONES GENÉRICAS ============
@@ -80,10 +81,69 @@ export const deleteIngreso = (id) => {
 // ============ CONFIGURACIÓN ============
 
 export const getConfig = () => {
-  const config = localStorage.getItem(KEYS.CONFIG);
-  return config ? JSON.parse(config) : { incomeBase: 0, mesActual: new Date().toISOString().slice(0, 7) };
+  const stored = localStorage.getItem(KEYS.CONFIG);
+  const fallbackMes = new Date().toISOString().slice(0, 7);
+
+  if (!stored) {
+    return {
+      // backwards compatible
+      incomeBase: 0,
+      mesActual: fallbackMes,
+
+      // nuevo modelo de fondo disponible
+      fondoDisponible: 0,
+      ultimaNomina: null,
+      mesReferencia: fallbackMes,
+      historialNominas: []
+    };
+  }
+
+  const config = JSON.parse(stored);
+
+  // Migración simple: si existe incomeBase/mesActual, manténlos y
+  // crea los nuevos campos sin eliminar los anteriores para compatibilidad
+  const migrated = {
+    incomeBase: typeof config.incomeBase !== 'undefined' ? config.incomeBase : 0,
+    mesActual: config.mesActual || fallbackMes,
+
+    fondoDisponible: typeof config.fondoDisponible !== 'undefined' ? config.fondoDisponible : (config.incomeBase ? config.incomeBase : 0),
+    ultimaNomina: config.ultimaNomina || null,
+    mesReferencia: config.mesReferencia || config.mesActual || fallbackMes,
+    historialNominas: Array.isArray(config.historialNominas) ? config.historialNominas : []
+  };
+
+  return migrated;
 };
 
 export const saveConfig = (config) => {
   saveToStorage(KEYS.CONFIG, config);
+};
+
+/**
+ * Registrar una nueva nómina y añadirla al fondo disponible
+ * @param {number|string} cantidad
+ * @param {string} fecha - ISO date (YYYY-MM-DD) u otra representación
+ * @returns {object} config actualizada
+ */
+export const registrarNomina = (cantidad, fecha) => {
+  const config = getConfig();
+  const monto = parseFloat(cantidad) || 0;
+
+  config.fondoDisponible = parseFloat(config.fondoDisponible || 0) + monto;
+  config.ultimaNomina = fecha || null;
+  config.historialNominas = config.historialNominas || [];
+  config.historialNominas.push({ fecha: fecha || new Date().toISOString().slice(0,10), cantidad: monto });
+
+  saveToStorage(KEYS.CONFIG, config);
+  return config;
+};
+
+// ============ CATEGORÍAS PERSONALIZABLES ============
+export const getClasificacionCategorias = () => {
+  const raw = localStorage.getItem(KEYS.CLASIFICACION_CATEGORIAS);
+  return raw ? JSON.parse(raw) : null;
+};
+
+export const saveClasificacionCategorias = (obj) => {
+  saveToStorage(KEYS.CLASIFICACION_CATEGORIAS, obj);
 };

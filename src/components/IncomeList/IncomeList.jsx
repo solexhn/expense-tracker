@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getIngresos, deleteIngreso, getConfig } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
-import { Card, CardContent } from '../ui/card';
+import { Card, CardHeader, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Trash2, Calendar } from 'lucide-react';
 
 const IncomeList = ({ updateTrigger, onListChange }) => {
-  const [ingresos, setIngresos] = useState([]);
   const [ingresosMes, setIngresosMes] = useState([]);
 
   useEffect(() => {
@@ -17,16 +16,19 @@ const IncomeList = ({ updateTrigger, onListChange }) => {
   const cargarIngresos = () => {
     const config = getConfig();
     const todosIngresos = getIngresos();
-    
+
+    // Usar mesReferencia o mesActual para filtrar
+    const mesParaFiltrar = config.mesReferencia || config.mesActual;
+
     // Filtrar solo los del mes actual
-    const ingresosMesActual = todosIngresos.filter(i => 
-      i.fecha.startsWith(config.mesActual)
+    const ingresosMesActual = todosIngresos.filter(i =>
+      i.fecha.startsWith(mesParaFiltrar)
     );
     
     // Ordenar por fecha descendente
     ingresosMesActual.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     
-    setIngresos(todosIngresos);
+    // mantener solo la lista del mes en estado de render
     setIngresosMes(ingresosMesActual);
   };
 
@@ -49,61 +51,44 @@ const IncomeList = ({ updateTrigger, onListChange }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">
-          Ingresos del Mes
-        </h2>
-        <Badge variant="secondary" className="text-base">
-          {ingresosMes.length}
-        </Badge>
-      </div>
-      
-      {ingresosMes.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No hay ingresos adicionales este mes
-            </p>
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">Ingresos</h2>
+            <Badge variant="secondary" className="text-sm">{ingresosMes.length}</Badge>
+          </div>
+        </CardHeader>
+
+        {ingresosMes.length === 0 ? (
+          <CardContent className="pt-4 pb-4 px-4">
+            <p className="text-center text-muted-foreground">No hay ingresos adicionales este mes</p>
           </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {ingresosMes.map(ingreso => (
-            <Card key={ingreso.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        ) : (
+          <CardContent className="pt-2 pb-2 px-0">
+            <div className="divide-y">
+              {ingresosMes.map(ingreso => (
+                <div key={ingreso.id} className="flex items-center justify-between py-2 px-4 gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <span>{formatearFecha(ingreso.fecha)}</span>
                     </div>
-                    
-                    <h3 className="font-semibold text-lg">{ingreso.concepto}</h3>
-                    
-                    <Badge variant="outline" className="mt-1">
-                      {ingreso.tipo}
-                    </Badge>
+                    <p className="truncate font-medium text-sm mt-1">{ingreso.concepto}</p>
+                    <Badge variant="outline" className="mt-1 text-xs">{ingreso.tipo}</Badge>
                   </div>
-                  
-                  <div className="flex flex-col items-end gap-2">
-                    <p className="text-xl font-bold text-green-600">
-                      {formatearMoneda(ingreso.cantidad)}
-                    </p>
-                    
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => eliminar(ingreso.id)}
-                    >
+
+                  <div className="flex items-center gap-3 ml-3">
+                    <p className="font-semibold text-sm text-green-600">{formatearMoneda(ingreso.cantidad)}</p>
+                    <Button variant="destructive" size="icon" onClick={() => eliminar(ingreso.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              ))}
+            </div>
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
 };

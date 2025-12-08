@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+// date-fns 'format' removed (not used currently)
 
 // Filtrar por mes (formato: "2024-11")
 const filtrarPorMes = (items, mes) => {
@@ -68,4 +68,22 @@ export const formatearMoneda = (cantidad) => {
     style: 'currency',
     currency: 'EUR'
   }).format(cantidad);
+};
+
+// ============ UTILIDADES DE FECHA ============
+
+/**
+ * Devuelve el día real de cobro para un gasto fijo teniendo en cuenta
+ * que si un gasto está configurado para el día 31 y el mes tiene menos
+ * días, se cobrará el último día del mes.
+ *
+ * @param {number} diaDelMes - 1..31
+ * @param {number} año - año en número entero (ej: 2025)
+ * @param {number} mesIndex - índice del mes 1..12
+ * @returns {number} día real (ej: 28, 30, 31)
+ */
+export const calcularDiaRealCobro = (diaDelMes, año, mesIndex) => {
+  // mesIndex esperado 1..12. Para new Date necesitamos mesIndex en base 1 -> new Date(año, mesIndex, 0)
+  const ultimoDiaDelMes = new Date(año, mesIndex, 0).getDate();
+  return Math.min(diaDelMes, ultimoDiaDelMes);
 };
