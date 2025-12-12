@@ -87,3 +87,48 @@ export const calcularDiaRealCobro = (diaDelMes, año, mesIndex) => {
   const ultimoDiaDelMes = new Date(año, mesIndex, 0).getDate();
   return Math.min(diaDelMes, ultimoDiaDelMes);
 };
+
+// ============ SELECCIÓN INTELIGENTE DE MES ============
+
+/**
+ * Detecta automáticamente el mejor mes para mostrar basándose en:
+ * 1. Si hay datos del mes actual -> mes actual
+ * 2. Si NO hay datos del mes actual -> mes más reciente con datos
+ * 3. Si NO hay datos -> mes actual
+ *
+ * @param {Array} gastosVariables - todos los gastos variables
+ * @param {Array} ingresos - todos los ingresos
+ * @returns {string} mes en formato YYYY-MM
+ */
+export const detectarMejorMes = (gastosVariables, ingresos) => {
+  const mesActual = new Date().toISOString().slice(0, 7);
+
+  // Recolectar todos los meses con datos
+  const fechas = new Set();
+
+  gastosVariables.forEach(g => {
+    if (g.fecha) {
+      fechas.add(g.fecha.substring(0, 7));
+    }
+  });
+
+  ingresos.forEach(i => {
+    if (i.fecha) {
+      fechas.add(i.fecha.substring(0, 7));
+    }
+  });
+
+  // Si no hay datos, devolver mes actual
+  if (fechas.size === 0) {
+    return mesActual;
+  }
+
+  // Si hay datos del mes actual, devolver mes actual
+  if (fechas.has(mesActual)) {
+    return mesActual;
+  }
+
+  // Si NO hay datos del mes actual, devolver el mes más reciente
+  const mesesOrdenados = Array.from(fechas).sort((a, b) => b.localeCompare(a));
+  return mesesOrdenados[0];
+};

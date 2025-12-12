@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Expense Tracker</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #dcdcaa; margin-top: 20px; }
+        pre {
+            background: #252526;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 3px solid #007acc;
+        }
+        .warning {
+            color: #ce9178;
+            font-weight: bold;
+        }
+        .success {
+            color: #4ec9b0;
+            font-weight: bold;
+        }
+        .error {
+            color: #f48771;
+            font-weight: bold;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug - Expense Tracker Storage</h1>
+
+    <button onclick="debugStorage()">🔄 Refresh Debug Info</button>
+    <button onclick="clearStorage()">🗑️ Clear All Storage</button>
+    <button onclick="downloadDebug()">💾 Download Debug JSON</button>
+
+    <div id="output"></div>
+
+    <script>
+        function debugStorage() {
+            const output = document.getElementById('output');
+            let html = '';
+
+            // CONFIG
+            html += '<h2>📋 Config</h2>';
+            const config = localStorage.getItem('config');
+            if (config) {
+                const configObj = JSON.parse(config);
+                html += '<pre>' + JSON.stringify(configObj, null, 2) + '</pre>';
+
+                const mesParaFiltrar = configObj.mesReferencia || configObj.mesActual;
+                html += `<p class="warning">Mes usado para filtrar: <strong>${mesParaFiltrar}</strong></p>`;
+            } else {
+                html += '<p class="error">❌ No hay config en localStorage</p>';
+            }
+
+            // GASTOS VARIABLES
+            html += '<h2>💸 Gastos Variables</h2>';
+            const gastosVariables = localStorage.getItem('gastosVariables');
+            if (gastosVariables) {
+                const gastosArray = JSON.parse(gastosVariables);
+                html += `<p class="success">✅ Total gastos en storage: <strong>${gastosArray.length}</strong></p>`;
+
+                if (config) {
+                    const configObj = JSON.parse(config);
+                    const mesParaFiltrar = configObj.mesReferencia || configObj.mesActual;
+                    const gastosFiltrados = gastosArray.filter(g => g.fecha.startsWith(mesParaFiltrar));
+                    html += `<p class="success">✅ Gastos del mes ${mesParaFiltrar}: <strong>${gastosFiltrados.length}</strong></p>`;
+                }
+
+                html += '<pre>' + JSON.stringify(gastosArray, null, 2) + '</pre>';
+            } else {
+                html += '<p class="error">❌ No hay gastos variables en localStorage</p>';
+            }
+
+            // GASTOS FIJOS
+            html += '<h2>🔒 Gastos Fijos</h2>';
+            const gastosFijos = localStorage.getItem('gastosFijos');
+            if (gastosFijos) {
+                const fijosArray = JSON.parse(gastosFijos);
+                const activos = fijosArray.filter(g => g.estado === 'activo');
+                html += `<p class="success">✅ Total: ${fijosArray.length} (${activos.length} activos)</p>`;
+                html += '<pre>' + JSON.stringify(fijosArray, null, 2) + '</pre>';
+            } else {
+                html += '<p class="error">❌ No hay gastos fijos en localStorage</p>';
+            }
+
+            // INGRESOS
+            html += '<h2>💰 Ingresos</h2>';
+            const ingresos = localStorage.getItem('ingresos');
+            if (ingresos) {
+                const ingresosArray = JSON.parse(ingresos);
+                html += `<p class="success">✅ Total ingresos: ${ingresosArray.length}</p>`;
+                html += '<pre>' + JSON.stringify(ingresosArray, null, 2) + '</pre>';
+            } else {
+                html += '<p class="error">❌ No hay ingresos en localStorage</p>';
+            }
+
+            // THEME
+            html += '<h2>🎨 Tema</h2>';
+            const theme = localStorage.getItem('theme');
+            html += `<p>Tema actual: <strong>${theme || 'light (default)'}</strong></p>`;
+
+            // ALL KEYS
+            html += '<h2>🔑 Todas las keys en localStorage</h2>';
+            html += '<pre>';
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                html += `${key}\n`;
+            }
+            html += '</pre>';
+
+            output.innerHTML = html;
+        }
+
+        function clearStorage() {
+            if (confirm('⚠️ ADVERTENCIA: Esto borrará TODOS los datos.\n\n¿Estás seguro?')) {
+                localStorage.clear();
+                alert('✅ Storage limpiado');
+                debugStorage();
+            }
+        }
+
+        function downloadDebug() {
+            const debugData = {
+                timestamp: new Date().toISOString(),
+                localStorage: {},
+                analysis: {}
+            };
+
+            // Copy all localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                try {
+                    debugData.localStorage[key] = JSON.parse(localStorage.getItem(key));
+                } catch (e) {
+                    debugData.localStorage[key] = localStorage.getItem(key);
+                }
+            }
+
+            // Analysis
+            if (debugData.localStorage.config) {
+                const config = debugData.localStorage.config;
+                debugData.analysis.mesParaFiltrar = config.mesReferencia || config.mesActual;
+
+                if (debugData.localStorage.gastosVariables) {
+                    const gastos = debugData.localStorage.gastosVariables;
+                    debugData.analysis.totalGastos = gastos.length;
+                    debugData.analysis.gastosPorMes = {};
+                    gastos.forEach(g => {
+                        const mes = g.fecha.substring(0, 7);
+                        if (!debugData.analysis.gastosPorMes[mes]) {
+                            debugData.analysis.gastosPorMes[mes] = 0;
+                        }
+                        debugData.analysis.gastosPorMes[mes]++;
+                    });
+                }
+            }
+
+            // Download
+            const dataStr = JSON.stringify(debugData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `debug-storage-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Auto-run on load
+        debugStorage();
+    </script>
+</body>
+</html>

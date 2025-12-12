@@ -6,7 +6,7 @@ import {
   getGastosVariables,
   getIngresos
 } from '../../utils/storage';
-import { obtenerResumenMes, formatearMoneda, calcularDiaRealCobro } from '../../utils/calculations';
+import { obtenerResumenMes, formatearMoneda, calcularDiaRealCobro, detectarMejorMes } from '../../utils/calculations';
 import MonthlyChart from '../Charts/MonthlyChart';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet, Eye, EyeOff } from 'lucide-react';
@@ -65,14 +65,34 @@ const Dashboard = () => {
   }, []);
 
   const cargarDatos = useCallback(() => {
-    const config = getConfig();
+    let config = getConfig();
     const gastosFijos = getGastosFijos();
     const gastosVariables = getGastosVariables();
     const ingresos = getIngresos();
 
+    // Detección inteligente: usar mes guardado en config, o detectar automáticamente el mejor
+    let mesAMostrar = config.mesReferencia || config.mesActual;
+
+    // Si el mes guardado no tiene datos, usar detección inteligente
+    const hayDatosEnMesGuardado =
+      gastosVariables.some(g => g.fecha && g.fecha.startsWith(mesAMostrar)) ||
+      ingresos.some(i => i.fecha && i.fecha.startsWith(mesAMostrar));
+
+    if (!hayDatosEnMesGuardado) {
+      mesAMostrar = detectarMejorMes(gastosVariables, ingresos);
+
+      // Actualizar config con el mes detectado
+      config = {
+        ...config,
+        mesActual: mesAMostrar,
+        mesReferencia: mesAMostrar
+      };
+      saveConfig(config);
+    }
+
     const resumenCalculado = obtenerResumenMes(config, gastosFijos, gastosVariables, ingresos);
     setResumen(resumenCalculado);
-    setMesActual(config.mesReferencia || config.mesActual);
+    setMesActual(mesAMostrar);
     setMesesDisponibles(obtenerMesesDisponibles());
 
     // notificaciones simples

@@ -9,6 +9,7 @@ import {
 } from '../../utils/storage';
 import { getClasificacionCategorias, saveClasificacionCategorias } from '../../utils/storage';
 import { CLASIFICACION_CATEGORIAS } from '../../utils/financialAnalysis';
+import { detectarMejorMes } from '../../utils/calculations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Download, Upload } from 'lucide-react';
@@ -86,19 +87,23 @@ const Backup = ({ onDataRestored }) => {
         // Limpiar localStorage
         localStorage.clear();
 
-        // Restaurar configuración
-        saveConfig(datos.config);
+        // Restaurar gastos variables e ingresos primero (necesarios para detectar mejor mes)
+        localStorage.setItem('gastosVariables', JSON.stringify(datos.gastosVariables));
+        localStorage.setItem('ingresos', JSON.stringify(datos.ingresos));
 
         // Restaurar gastos fijos
-        datos.gastosFijos.forEach(gasto => {
-          localStorage.setItem('gastosFijos', JSON.stringify(datos.gastosFijos));
-        });
+        localStorage.setItem('gastosFijos', JSON.stringify(datos.gastosFijos));
 
-        // Restaurar gastos variables
-        localStorage.setItem('gastosVariables', JSON.stringify(datos.gastosVariables));
+        // Detectar automáticamente el mejor mes para mostrar
+        const mejorMes = detectarMejorMes(datos.gastosVariables, datos.ingresos);
 
-        // Restaurar ingresos
-        localStorage.setItem('ingresos', JSON.stringify(datos.ingresos));
+        // Restaurar configuración con detección inteligente de mes
+        const configActualizado = {
+          ...datos.config,
+          mesActual: mejorMes,
+          mesReferencia: mejorMes
+        };
+        saveConfig(configActualizado);
 
         alert('✅ Datos restaurados correctamente');
         
