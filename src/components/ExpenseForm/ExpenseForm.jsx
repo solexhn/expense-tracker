@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { saveGastoVariable, getConfig } from '../../utils/storage';
+import { saveGastoVariable, getConfig, getGastosVariables, getGastosFijos } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -15,10 +15,39 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   });
 
   const [fondoActual, setFondoActual] = useState(0);
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
   useEffect(() => {
     const config = getConfig();
     setFondoActual(parseFloat(config.fondoDisponible || 0));
+
+    // Obtener categorías existentes
+    const gastosVariables = getGastosVariables();
+    const gastosFijos = getGastosFijos();
+
+    // Extraer categorías únicas y contar frecuencia
+    const categoriaMap = new Map();
+
+    gastosVariables.forEach(g => {
+      if (g.categoria) {
+        const count = categoriaMap.get(g.categoria) || 0;
+        categoriaMap.set(g.categoria, count + 1);
+      }
+    });
+
+    gastosFijos.forEach(g => {
+      if (g.categoria) {
+        const count = categoriaMap.get(g.categoria) || 0;
+        categoriaMap.set(g.categoria, count + 1);
+      }
+    });
+
+    // Ordenar por frecuencia (más usadas primero)
+    const categoriasOrdenadas = Array.from(categoriaMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([categoria]) => categoria);
+
+    setCategoriasDisponibles(categoriasOrdenadas);
   }, []);
 
   const handleChange = (e) => {
@@ -113,7 +142,20 @@ const ExpenseForm = ({ onExpenseAdded }) => {
                 value={formData.categoria}
                 onChange={handleChange}
                 placeholder="Ej: alimentación, ocio"
+                list="categorias-sugeridas"
+                autoComplete="off"
               />
+              <datalist id="categorias-sugeridas">
+                {categoriasDisponibles.map((cat, idx) => (
+                  <option key={idx} value={cat} />
+                ))}
+              </datalist>
+              {categoriasDisponibles.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  💡 Sugerencias: {categoriasDisponibles.slice(0, 3).join(', ')}
+                  {categoriasDisponibles.length > 3 && '...'}
+                </p>
+              )}
             </div>
           </div>
 

@@ -72,6 +72,30 @@ export const saveGastoVariable = (gasto) => {
   return { gasto: nuevoGasto, fondoRestante: config.fondoDisponible };
 };
 
+export const updateGastoVariable = (id, datosActualizados) => {
+  const gastos = getGastosVariables();
+  const indice = gastos.findIndex(g => g.id === id);
+
+  if (indice === -1) return;
+
+  const gastoOriginal = gastos[indice];
+  const cantidadOriginal = parseFloat(gastoOriginal.cantidad);
+  const cantidadNueva = parseFloat(datosActualizados.cantidad);
+  const fueDeducido = gastoOriginal.deductedFromFund;
+
+  // Actualizar el gasto
+  gastos[indice] = { ...gastos[indice], ...datosActualizados };
+  saveToStorage(KEYS.GASTOS_VARIABLES, gastos);
+
+  // Si fue deducido del fondo, ajustar el fondo según la diferencia
+  if (fueDeducido) {
+    const config = getConfig();
+    const diferencia = cantidadOriginal - cantidadNueva;
+    config.fondoDisponible = parseFloat(config.fondoDisponible || 0) + diferencia;
+    saveConfig(config);
+  }
+};
+
 export const deleteGastoVariable = (id) => {
   const gastos = getGastosVariables();
   const gastoAEliminar = gastos.find(g => g.id === id);

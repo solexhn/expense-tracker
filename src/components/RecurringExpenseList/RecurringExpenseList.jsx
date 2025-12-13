@@ -4,10 +4,14 @@ import { formatearMoneda } from '../../utils/calculations';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Trash2, CheckCircle2, Pause, XCircle, Calendar } from 'lucide-react';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Trash2, CheckCircle2, Pause, XCircle, Calendar, Pencil, X, Check } from 'lucide-react';
 
 const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
   const [gastos, setGastos] = useState([]);
+  const [editandoId, setEditandoId] = useState(null);
+  const [formEdicion, setFormEdicion] = useState({});
 
   useEffect(() => {
     cargarGastos();
@@ -30,6 +34,49 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
       cargarGastos();
       if (onListChange) onListChange();
     }
+  };
+
+  const iniciarEdicion = (gasto) => {
+    setEditandoId(gasto.id);
+    setFormEdicion({
+      nombre: gasto.nombre,
+      cantidad: gasto.cantidad,
+      diaDelMes: gasto.diaDelMes,
+      tipo: gasto.tipo,
+      categoria: gasto.categoria || '',
+      cuotasRestantes: gasto.cuotasRestantes || '',
+      cuotasTotales: gasto.cuotasTotales || '',
+      fechaInicio: gasto.fechaInicio || ''
+    });
+  };
+
+  const cancelarEdicion = () => {
+    setEditandoId(null);
+    setFormEdicion({});
+  };
+
+  const guardarEdicion = (id) => {
+    const datosActualizados = {
+      ...formEdicion,
+      cantidad: parseFloat(formEdicion.cantidad),
+      diaDelMes: parseInt(formEdicion.diaDelMes),
+      cuotasRestantes: formEdicion.cuotasRestantes ? parseInt(formEdicion.cuotasRestantes) : null,
+      cuotasTotales: formEdicion.cuotasTotales ? parseInt(formEdicion.cuotasTotales) : null
+    };
+
+    updateGastoFijo(id, datosActualizados);
+    setEditandoId(null);
+    setFormEdicion({});
+    cargarGastos();
+    if (onListChange) onListChange();
+  };
+
+  const handleChangeEdicion = (e) => {
+    const { name, value } = e.target;
+    setFormEdicion(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   // Configuración de estados con iconos y colores
@@ -75,7 +122,8 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
           {gastos.map(gasto => {
             const config = estadoConfig[gasto.estado] || estadoConfig.activo;
             const IconComponent = config.icon;
-            
+            const estaEditando = editandoId === gasto.id;
+
             return (
               <Card key={gasto.id} className="relative py-2 px-3">
                 <CardHeader className="py-2 px-0">
@@ -89,6 +137,127 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                 </CardHeader>
 
                 <CardContent className="space-y-2 py-2 px-0">
+                  {estaEditando ? (
+                    /* MODO EDICIÓN */
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`edit-nombre-${gasto.id}`} className="text-xs">Nombre</Label>
+                        <Input
+                          id={`edit-nombre-${gasto.id}`}
+                          name="nombre"
+                          value={formEdicion.nombre}
+                          onChange={handleChangeEdicion}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-2">
+                          <Label htmlFor={`edit-cantidad-${gasto.id}`} className="text-xs">Cantidad (€)</Label>
+                          <Input
+                            id={`edit-cantidad-${gasto.id}`}
+                            name="cantidad"
+                            type="number"
+                            step="0.01"
+                            value={formEdicion.cantidad}
+                            onChange={handleChangeEdicion}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`edit-dia-${gasto.id}`} className="text-xs">Día del mes</Label>
+                          <Input
+                            id={`edit-dia-${gasto.id}`}
+                            name="diaDelMes"
+                            type="number"
+                            min="1"
+                            max="31"
+                            value={formEdicion.diaDelMes}
+                            onChange={handleChangeEdicion}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`edit-tipo-${gasto.id}`} className="text-xs">Tipo</Label>
+                        <select
+                          id={`edit-tipo-${gasto.id}`}
+                          name="tipo"
+                          value={formEdicion.tipo}
+                          onChange={handleChangeEdicion}
+                          className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        >
+                          <option value="suscripcion">Suscripción</option>
+                          <option value="credito">Crédito</option>
+                          <option value="servicio">Servicio</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`edit-categoria-${gasto.id}`} className="text-xs">Categoría</Label>
+                        <Input
+                          id={`edit-categoria-${gasto.id}`}
+                          name="categoria"
+                          value={formEdicion.categoria}
+                          onChange={handleChangeEdicion}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      {formEdicion.tipo === 'credito' && (
+                        <div className="space-y-2 p-2 bg-muted rounded">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label htmlFor={`edit-cuotas-rest-${gasto.id}`} className="text-xs">Cuotas Rest.</Label>
+                              <Input
+                                id={`edit-cuotas-rest-${gasto.id}`}
+                                name="cuotasRestantes"
+                                type="number"
+                                value={formEdicion.cuotasRestantes}
+                                onChange={handleChangeEdicion}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`edit-cuotas-tot-${gasto.id}`} className="text-xs">Cuotas Tot.</Label>
+                              <Input
+                                id={`edit-cuotas-tot-${gasto.id}`}
+                                name="cuotasTotales"
+                                type="number"
+                                value={formEdicion.cuotasTotales}
+                                onChange={handleChangeEdicion}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          onClick={() => guardarEdicion(gasto.id)}
+                          className="flex-1"
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Guardar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={cancelarEdicion}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* MODO VISUALIZACIÓN */
+                    <>
+
                   {/* Cantidad principal */}
                   <p className="text-lg font-semibold">
                     {formatearMoneda(gasto.cantidad)}
@@ -141,8 +310,8 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                   
                   {/* Acciones */}
                   <div className="flex items-center gap-2 pt-2">
-                    <select 
-                      value={gasto.estado} 
+                    <select
+                      value={gasto.estado}
                       onChange={(e) => cambiarEstado(gasto.id, e.target.value)}
                       className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     >
@@ -150,7 +319,15 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                       <option value="pausado">Pausado</option>
                       <option value="finalizado">Finalizado</option>
                     </select>
-                    
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => iniciarEdicion(gasto)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+
                     <Button
                       variant="destructive"
                       size="icon"
@@ -159,6 +336,8 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             );

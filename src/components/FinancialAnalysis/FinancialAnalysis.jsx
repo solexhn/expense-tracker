@@ -38,8 +38,11 @@ const FinancialAnalysis = ({ updateTrigger }) => {
       // Calcular proyección de deudas
       const proyeccion = calcularProyeccionDeudas(gastosFijos);
       setProyeccionDeudas(proyeccion);
+
+      // IMPORTANTE: Usar gastos deducidos del fondo, NO filtrado mensual
+      // En el sistema de fondos, solo nos importan los gastos que ya fueron deducidos
       const gastosVariables = getGastosVariables().filter((g) =>
-        g.fecha.startsWith(defaultMes)
+        g.deductedFromFund === true
       );
 
       // Calcular ingresos totales - usar fondoDisponible del sistema de fondos
@@ -530,40 +533,9 @@ const FinancialAnalysis = ({ updateTrigger }) => {
         </CardContent>
       </Card>
 
-      {/* Predicción mensual */}
-      {analisis.prediccion && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Predicción del Mes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">{analisis.prediccion.mensaje}</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Gastado hasta ahora</p>
-                <p className="text-xl font-bold">
-                  {analisis.prediccion.totalActual.toFixed(2)} €
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Gasto proyectado</p>
-                <p className="text-xl font-bold">
-                  {analisis.prediccion.gastoProyectado.toFixed(2)} €
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Promedio diario</p>
-                <p className="text-xl font-bold">
-                  {analisis.prediccion.promedioDiario.toFixed(2)} €
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Predicción mensual - DESHABILITADO en sistema de fondos */}
+      {/* En el sistema de fondos continuos, la predicción mensual no tiene sentido */}
+      {/* porque no hay reset mensual. El "presupuesto disponible" ya muestra esto */}
 
       {/* Proyección de deudas */}
       {proyeccionDeudas && proyeccionDeudas.tieneDeudas && (

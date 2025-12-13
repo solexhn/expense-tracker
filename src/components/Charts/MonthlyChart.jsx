@@ -1,14 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { formatearMoneda } from '../../utils/calculations';
+import { formatearMoneda, calcularTotalGastosVariablesDeducidos } from '../../utils/calculations';
+import { getGastosVariables } from '../../utils/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const MonthlyChart = ({ resumen }) => {
-  const data = [
-    { name: 'Gastos Fijos', value: resumen.totalGastosFijos, color: '#f59e0b' },
-    { name: 'Gastos Variables', value: resumen.totalGastosVariables, color: '#3b82f6' },
-    { name: 'Saldo Restante', value: resumen.saldoRestante > 0 ? resumen.saldoRestante : 0, color: '#10b981' }
-  ];
+  let data;
+
+  if (resumen.isFundMode) {
+    // MODO FONDO: Mostrar gastos fijos + gastos variables deducidos + disponible
+    const gastosVariables = getGastosVariables();
+    const totalGastosVariablesDeducidos = calcularTotalGastosVariablesDeducidos(gastosVariables);
+
+    data = [
+      { name: 'Gastos Fijos', value: resumen.totalGastosFijos, color: '#f59e0b' },
+      { name: 'Gastos Variables', value: totalGastosVariablesDeducidos, color: '#3b82f6' },
+      { name: 'Disponible', value: resumen.disponibleReal > 0 ? resumen.disponibleReal : 0, color: '#10b981' }
+    ];
+  } else {
+    // MODO HISTÓRICO: Mantener lógica existente
+    data = [
+      { name: 'Gastos Fijos', value: resumen.totalGastosFijos, color: '#f59e0b' },
+      { name: 'Gastos Variables', value: resumen.totalGastosVariables, color: '#3b82f6' },
+      { name: 'Saldo Restante', value: resumen.saldoRestante > 0 ? resumen.saldoRestante : 0, color: '#10b981' }
+    ];
+  }
 
   // Filtrar valores que sean 0
   const dataFiltrada = data.filter(item => item.value > 0);
@@ -38,7 +54,7 @@ const MonthlyChart = ({ resumen }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Distribución Mensual</CardTitle>
+        <CardTitle>{resumen.isFundMode ? 'Distribución del Fondo' : 'Distribución Mensual'}</CardTitle>
       </CardHeader>
       <CardContent>
         {dataFiltrada.length > 0 ? (
