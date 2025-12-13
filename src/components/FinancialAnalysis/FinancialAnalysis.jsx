@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import {
-  TrendingUp,
   AlertTriangle,
   CheckCircle2,
   Info,
@@ -32,7 +31,6 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
       // Obtener datos del storage
       const config = getConfig();
-      const defaultMes = mesSeleccionado || config.mesActual || config.mesReferencia;
       const gastosFijos = getGastosFijos().filter((g) => g.estado === 'activo');
 
       // Calcular proyección de deudas

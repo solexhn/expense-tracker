@@ -24,3 +24,5 @@ yarn-error.log*
 CLAUDE.md
 REVISION_COPILOT.md
 ROADMAP.md
+.vercel
+PWA_DEPLOYMENT.md
