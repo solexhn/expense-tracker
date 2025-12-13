@@ -76,3 +76,10 @@ if (workbox) {
 } else {
   console.log('Workbox no pudo cargar');
 }
+
+// Listener para mensaje SKIP_WAITING desde el cliente
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});

@@ -51,6 +51,10 @@ function registerValidSW(swUrl, config) {
               if (config && config.onUpdate) {
                 config.onUpdate(registration);
               }
+              // Notificar al banner de actualización
+              if (window.onSWUpdate) {
+                window.onSWUpdate(registration);
+              }
             } else {
               console.log('Contenido cacheado para uso offline.');
               if (config && config.onSuccess) {

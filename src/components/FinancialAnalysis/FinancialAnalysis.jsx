@@ -78,7 +78,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
     } finally {
       setLoading(false);
     }
-  }, [mesSeleccionado]);
+  }, []);
 
   // construir lista de meses disponibles para selección
   const construirMesesDisponibles = () => {

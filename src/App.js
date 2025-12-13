@@ -10,6 +10,7 @@ import ExpenseList from './components/ExpenseList/ExpenseList';
 import IncomeForm from './components/IncomeForm/IncomeForm';
 import IncomeList from './components/IncomeList/IncomeList';
 import Backup from './components/Backup/Backup';
+import UpdateBanner from './components/UpdateBanner/UpdateBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from './components/ui/button';
@@ -125,6 +126,9 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Banner de actualización PWA */}
+      <UpdateBanner />
     </div>
   );
 }
