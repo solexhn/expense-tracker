@@ -64,7 +64,7 @@
 
     /* Forzar viewport correcto - crítico para Android */
     position: relative;
-    overflow-x: hidden;
+    /* overflow-x: hidden; */
     width: 100%;
     max-width: 100%;
     height: 100%;
@@ -82,7 +82,7 @@
     padding: 0;
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    /* overflow-x: hidden; */
     overflow-y: auto;
 
     /* Tipografía */
@@ -106,7 +106,7 @@
     width: 100%;
     max-width: 100%;
     min-height: 100vh;
-    overflow-x: hidden;
+    /* overflow-x: hidden; */
   }
 
   /* Prevenir zoom automático en inputs (crítico para móviles) */
