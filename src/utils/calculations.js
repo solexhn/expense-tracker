@@ -61,6 +61,42 @@ export const obtenerResumenMes = (config, gastosFijos, gastosVariables, ingresos
   };
 };
 
+// ============ SISTEMA DE FONDOS ============
+
+/**
+ * Resumen basado en fondo (alternativa al modelo mensual)
+ * Usado para el modelo de fondo continuo
+ */
+export const obtenerResumenFondo = (config, gastosFijos) => {
+  const fondoDisponible = parseFloat(config.fondoDisponible || 0);
+  const totalGastosFijos = calcularTotalGastosFijos(gastosFijos);
+
+  return {
+    fondoDisponible,
+    totalGastosFijos,
+    disponibleDespuesDeGastosFijos: fondoDisponible - totalGastosFijos,
+    ultimaNomina: config.ultimaNomina || null,
+    mesReferencia: config.mesReferencia || config.mesActual
+  };
+};
+
+/**
+ * Calcula el total de gastos variables que fueron deducidos del fondo
+ */
+export const calcularTotalGastosVariablesDeducidos = (gastosVariables) => {
+  return gastosVariables
+    .filter(g => g.deductedFromFund === true)
+    .reduce((total, gasto) => total + parseFloat(gasto.cantidad), 0);
+};
+
+/**
+ * Calcula el total de nóminas registradas en el historial
+ */
+export const calcularTotalNominasRegistradas = (config) => {
+  const historial = config.historialNominas || [];
+  return historial.reduce((total, nomina) => total + parseFloat(nomina.cantidad), 0);
+};
+
 // ============ FORMATO DE MONEDA ============
 
 export const formatearMoneda = (cantidad) => {

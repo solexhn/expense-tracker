@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { saveGastoVariable } from '../../utils/storage';
+import { useState, useEffect } from 'react';
+import { saveGastoVariable, getConfig } from '../../utils/storage';
+import { formatearMoneda } from '../../utils/calculations';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -12,6 +13,13 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     cantidad: '',
     categoria: ''
   });
+
+  const [fondoActual, setFondoActual] = useState(0);
+
+  useEffect(() => {
+    const config = getConfig();
+    setFondoActual(parseFloat(config.fondoDisponible || 0));
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,7 +39,12 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       categoria: formData.categoria
     };
 
-    saveGastoVariable(nuevoGasto);
+    const resultado = saveGastoVariable(nuevoGasto);
+
+    // Actualizar el fondo actual mostrado
+    if (resultado && resultado.fondoRestante !== undefined) {
+      setFondoActual(resultado.fondoRestante);
+    }
 
     // Limpiar formulario (mantener fecha actual)
     setFormData({
@@ -103,6 +116,29 @@ const ExpenseForm = ({ onExpenseAdded }) => {
               />
             </div>
           </div>
+
+          {/* Preview del fondo después de este gasto */}
+          {formData.cantidad && parseFloat(formData.cantidad) > 0 && (
+            <div className="bg-muted p-3 rounded-lg text-sm space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Fondo actual:</span>
+                <span className="font-medium">{formatearMoneda(fondoActual)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Después de este gasto:</span>
+                <span className={`font-bold ${
+                  (fondoActual - parseFloat(formData.cantidad)) < 0 ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {formatearMoneda(fondoActual - parseFloat(formData.cantidad))}
+                </span>
+              </div>
+              {(fondoActual - parseFloat(formData.cantidad)) < 0 && (
+                <p className="text-xs text-red-600 font-medium mt-1">
+                  ⚠️ Este gasto dejará tu fondo en negativo
+                </p>
+              )}
+            </div>
+          )}
 
           <Button type="submit">Añadir Gasto</Button>
         </form>

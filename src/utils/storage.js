@@ -52,13 +52,42 @@ export const getGastosVariables = () => {
 
 export const saveGastoVariable = (gasto) => {
   const gastos = getGastosVariables();
-  gastos.push({ ...gasto, id: Date.now().toString() });
+  const config = getConfig();
+
+  // Crear gasto con flag de seguimiento de fondo
+  const nuevoGasto = {
+    ...gasto,
+    id: Date.now().toString(),
+    deductedFromFund: true  // Marcar que fue deducido del fondo
+  };
+
+  // Agregar al array
+  gastos.push(nuevoGasto);
   saveToStorage(KEYS.GASTOS_VARIABLES, gastos);
+
+  // Restar del fondo
+  config.fondoDisponible = parseFloat(config.fondoDisponible || 0) - parseFloat(gasto.cantidad);
+  saveConfig(config);
+
+  return { gasto: nuevoGasto, fondoRestante: config.fondoDisponible };
 };
 
 export const deleteGastoVariable = (id) => {
-  const gastos = getGastosVariables().filter(g => g.id !== id);
-  saveToStorage(KEYS.GASTOS_VARIABLES, gastos);
+  const gastos = getGastosVariables();
+  const gastoAEliminar = gastos.find(g => g.id === id);
+
+  if (!gastoAEliminar) return;
+
+  // Eliminar del array
+  const gastosActualizados = gastos.filter(g => g.id !== id);
+  saveToStorage(KEYS.GASTOS_VARIABLES, gastosActualizados);
+
+  // Solo restaurar al fondo si fue originalmente deducido
+  if (gastoAEliminar.deductedFromFund) {
+    const config = getConfig();
+    config.fondoDisponible = parseFloat(config.fondoDisponible || 0) + parseFloat(gastoAEliminar.cantidad);
+    saveConfig(config);
+  }
 };
 
 // ============ INGRESOS ============
@@ -85,32 +114,52 @@ export const getConfig = () => {
   const fallbackMes = new Date().toISOString().slice(0, 7);
 
   if (!stored) {
+    // Usuario nuevo: inicializar con fondo vacío
     return {
-      // backwards compatible
       incomeBase: 0,
       mesActual: fallbackMes,
-
-      // nuevo modelo de fondo disponible
       fondoDisponible: 0,
       ultimaNomina: null,
       mesReferencia: fallbackMes,
-      historialNominas: []
+      historialNominas: [],
+      migratedToFundModel: true,
+      migrationDate: new Date().toISOString()
     };
   }
 
   const config = JSON.parse(stored);
 
-  // Migración simple: si existe incomeBase/mesActual, manténlos y
-  // crea los nuevos campos sin eliminar los anteriores para compatibilidad
+  // Ya migrado - devolver tal cual
+  if (config.migratedToFundModel) {
+    return config;
+  }
+
+  // MIGRACIÓN para usuarios existentes
+  console.log('🔄 Migrando a modelo de fondo continuo...');
+
   const migrated = {
+    // Mantener campos antiguos para compatibilidad
     incomeBase: typeof config.incomeBase !== 'undefined' ? config.incomeBase : 0,
     mesActual: config.mesActual || fallbackMes,
 
-    fondoDisponible: typeof config.fondoDisponible !== 'undefined' ? config.fondoDisponible : (config.incomeBase ? config.incomeBase : 0),
+    // Inicializar fondo desde ingreso existente
+    fondoDisponible: typeof config.fondoDisponible !== 'undefined'
+      ? config.fondoDisponible
+      : (config.incomeBase || 0),
+
     ultimaNomina: config.ultimaNomina || null,
     mesReferencia: config.mesReferencia || config.mesActual || fallbackMes,
-    historialNominas: Array.isArray(config.historialNominas) ? config.historialNominas : []
+    historialNominas: Array.isArray(config.historialNominas) ? config.historialNominas : [],
+
+    // Marcar migración completa
+    migratedToFundModel: true,
+    migrationDate: new Date().toISOString()
   };
+
+  // Guardar config migrado
+  saveToStorage(KEYS.CONFIG, migrated);
+
+  console.log('✅ Migración completada. Fondo inicial:', migrated.fondoDisponible);
 
   return migrated;
 };

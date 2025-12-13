@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { analizarDistribucionFinanciera, calcularProyeccionDeudas } from '../../utils/financialAnalysis';
 import { getConfig, getGastosFijos, getGastosVariables, getIngresos } from '../../utils/storage';
-import { calcularTotalIngresos } from '../../utils/calculations';
 
 /**
  * Componente de Análisis Financiero
@@ -42,12 +41,10 @@ const FinancialAnalysis = ({ updateTrigger }) => {
       const gastosVariables = getGastosVariables().filter((g) =>
         g.fecha.startsWith(defaultMes)
       );
-      const ingresosAdicionales = getIngresos().filter((i) =>
-        i.fecha.startsWith(defaultMes)
-      );
 
-      // Calcular ingresos totales
-      const ingresosTotales = parseFloat(config.incomeBase || 0) + calcularTotalIngresos(ingresosAdicionales, defaultMes);
+      // Calcular ingresos totales - usar fondoDisponible del sistema de fondos
+      // Esto representa el dinero real disponible ahora
+      const ingresosTotales = parseFloat(config.fondoDisponible || 0);
 
       // Validar que haya ingresos
       if (ingresosTotales <= 0) {
@@ -265,6 +262,16 @@ const FinancialAnalysis = ({ updateTrigger }) => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Banner informativo sobre el sistema de fondos */}
+          <div className="bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 p-3 rounded-lg text-sm mt-3">
+            <p className="font-medium text-blue-900 dark:text-blue-100">
+              💡 Análisis basado en tu fondo disponible actual
+            </p>
+            <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">
+              Los porcentajes se calculan sobre el dinero real que tienes ahora, no sobre ingresos mensuales estimados
+            </p>
           </div>
         </CardContent>
       </Card>
