@@ -42,7 +42,7 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <Tabs defaultValue="dashboard" className="flex-1">
               <TabsList className="w-full justify-start rounded-none h-12 md:h-16 bg-transparent border-b-0 gap-1 overflow-x-auto">

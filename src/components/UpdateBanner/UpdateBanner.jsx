@@ -67,7 +67,7 @@ const UpdateBanner = () => {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div className="w-full lg:max-w-7xl lg:mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
           <RefreshCw className="h-5 w-5 flex-shrink-0" />
           <div className="flex-1">

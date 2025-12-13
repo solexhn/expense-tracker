@@ -156,7 +156,7 @@ const Dashboard = () => {
   }, [cargarDatos]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">
           {viewMode === 'fund' ? 'Resumen del Fondo' : 'Resumen del Mes'}

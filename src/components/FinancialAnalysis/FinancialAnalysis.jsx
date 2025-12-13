@@ -115,7 +115,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">Cargando análisis...</p>
@@ -127,7 +127,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
   if (!analisis) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
@@ -175,7 +175,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
