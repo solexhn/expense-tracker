@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { saveGastoFijo } from '../../utils/storage';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui-simple/Card';
+import { Input } from '../ui-simple/Input';
+import { Label } from '../ui-simple/Label';
+import { Button } from '../ui-simple/Button';
 
 const RecurringExpenseForm = ({ onExpenseAdded }) => {
   const [formData, setFormData] = useState({

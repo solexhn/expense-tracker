@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getConfig, getGastosFijos, getGastosVariables, getIngresos } from '../../utils/storage';
 import { formatearMoneda, calcularDiaRealCobro } from '../../utils/calculations';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui-simple/Card';
+import { Badge } from '../ui-simple/Badge';
+import { FiTrendingUp, FiTrendingDown, FiCalendar } from 'react-icons/fi';
 
 const Timeline = ({ updateTrigger }) => {
   const [eventos, setEventos] = useState([]);
@@ -153,9 +153,9 @@ const Timeline = ({ updateTrigger }) => {
 
   const getTipoIcon = (tipo) => {
     if (tipo === 'ingreso') {
-      return <TrendingUp className="h-5 w-5 text-green-600" />;
+      return <FiTrendingUp className="h-5 w-5 text-green-600" />;
     }
-    return <TrendingDown className="h-5 w-5 text-red-600" />;
+    return <FiTrendingDown className="h-5 w-5 text-red-600" />;
   };
 
   const getTipoColor = (tipo) => {
@@ -164,10 +164,10 @@ const Timeline = ({ updateTrigger }) => {
   };
 
   return (
-    <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="w-full px-4 py-6 space-y-6 overflow-x-clip">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Calendar className="h-6 w-6" />
+        <FiCalendar className="h-6 w-6" />
         <h1 className="text-3xl font-bold tracking-tight">Cronograma del Mes</h1>
       </div>
 

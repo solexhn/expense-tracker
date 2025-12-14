@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { getGastosFijos, updateGastoFijo, deleteGastoFijo } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Trash2, CheckCircle2, Pause, XCircle, Calendar, Pencil, X, Check } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui-simple/Card';
+import { Button } from '../ui-simple/Button';
+import { Badge } from '../ui-simple/Badge';
+import { Input } from '../ui-simple/Input';
+import { Label } from '../ui-simple/Label';
+import { FiTrash2, FiCheckCircle, FiPause, FiXCircle, FiCalendar, FiEdit2, FiX, FiCheck } from 'react-icons/fi';
 
 const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
   const [gastos, setGastos] = useState([]);
-  const [editandoId, setEditandoId] = useState(null);
+  const [editandoId, setFiEditandoId] = useState(null);
   const [formEdicion, setFormEdicion] = useState({});
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
   };
 
   const iniciarEdicion = (gasto) => {
-    setEditandoId(gasto.id);
+    setFiEditandoId(gasto.id);
     setFormEdicion({
       nombre: gasto.nombre,
       cantidad: gasto.cantidad,
@@ -51,7 +51,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
   };
 
   const cancelarEdicion = () => {
-    setEditandoId(null);
+    setFiEditandoId(null);
     setFormEdicion({});
   };
 
@@ -65,7 +65,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
     };
 
     updateGastoFijo(id, datosActualizados);
-    setEditandoId(null);
+    setFiEditandoId(null);
     setFormEdicion({});
     cargarGastos();
     if (onListChange) onListChange();
@@ -82,17 +82,17 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
   // Configuración de estados con iconos y colores
   const estadoConfig = {
     activo: {
-      icon: CheckCircle2,
+      icon: FiCheckCircle,
       badgeClass: 'bg-green-100 text-green-800 border-green-200',
       label: 'Activo'
     },
     pausado: {
-      icon: Pause,
+      icon: FiPause,
       badgeClass: 'bg-orange-100 text-orange-800 border-orange-200',
       label: 'Pausado'
     },
     finalizado: {
-      icon: XCircle,
+      icon: FiXCircle,
       badgeClass: 'bg-gray-100 text-gray-800 border-gray-200',
       label: 'Finalizado'
     }
@@ -122,7 +122,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
           {gastos.map(gasto => {
             const config = estadoConfig[gasto.estado] || estadoConfig.activo;
             const IconComponent = config.icon;
-            const estaEditando = editandoId === gasto.id;
+            const estaFiEditando = editandoId === gasto.id;
 
             return (
               <Card key={gasto.id} className="relative py-2 px-3">
@@ -137,7 +137,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                 </CardHeader>
 
                 <CardContent className="space-y-2 py-2 px-0">
-                  {estaEditando ? (
+                  {estaFiEditando ? (
                     /* MODO EDICIÓN */
                     <div className="space-y-3">
                       <div className="space-y-2">
@@ -242,7 +242,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                           onClick={() => guardarEdicion(gasto.id)}
                           className="flex-1"
                         >
-                          <Check className="h-4 w-4 mr-1" />
+                          <FiCheck className="h-4 w-4 mr-1" />
                           Guardar
                         </Button>
                         <Button
@@ -250,7 +250,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                           variant="outline"
                           onClick={cancelarEdicion}
                         >
-                          <X className="h-4 w-4" />
+                          <FiX className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -263,10 +263,10 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                     {formatearMoneda(gasto.cantidad)}
                   </p>
                   
-                  {/* Información del gasto */}
+                  {/* FiInformación del gasto */}
                     <div className="space-y-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
+                      <FiCalendar className="h-4 w-4" />
                       <span>Día {gasto.diaDelMes} de cada mes</span>
                     </div>
                     
@@ -325,7 +325,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                       size="icon"
                       onClick={() => iniciarEdicion(gasto)}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <FiEdit2 className="h-4 w-4" />
                     </Button>
 
                     <Button
@@ -333,7 +333,7 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                       size="icon"
                       onClick={() => eliminar(gasto.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <FiTrash2 className="h-4 w-4" />
                     </Button>
                   </div>
                     </>

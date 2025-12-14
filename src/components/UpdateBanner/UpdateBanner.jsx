@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button } from '../ui/button';
-import { RefreshCw, X } from 'lucide-react';
+import { Button } from '../ui-simple/Button';
+import { FiRefreshCw, FiX } from 'react-icons/fi';
 
 /**
  * Banner que aparece cuando hay una nueva versión de la app disponible
@@ -67,9 +67,9 @@ const UpdateBanner = () => {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
-      <div className="w-full lg:max-w-7xl lg:mx-auto flex items-center justify-between gap-4">
+      <div className="w-full lg:lg:mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1">
-          <RefreshCw className="h-5 w-5 flex-shrink-0" />
+          <FiRefreshCw className="h-5 w-5 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-semibold text-sm">Nueva versión disponible</p>
             <p className="text-xs text-white/90">Toca actualizar para ver las últimas mejoras</p>
@@ -90,7 +90,7 @@ const UpdateBanner = () => {
             variant="ghost"
             className="h-8 w-8 text-white hover:bg-white/20"
           >
-            <X className="h-4 w-4" />
+            <FiX className="h-4 w-4" />
           </Button>
         </div>
       </div>

@@ -10,9 +10,9 @@ import {
 import { getClasificacionCategorias, saveClasificacionCategorias } from '../../utils/storage';
 import { CLASIFICACION_CATEGORIAS } from '../../utils/financialAnalysis';
 import { detectarMejorMes } from '../../utils/calculations';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Download, Upload } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui-simple/Card';
+import { Button } from '../ui-simple/Button';
+import { FiDownload, FiUpload } from 'react-icons/fi';
 
 const Backup = ({ onDataRestored }) => {
   // Categorías personalizables
@@ -134,7 +134,7 @@ const Backup = ({ onDataRestored }) => {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Download className="h-5 w-5" />
+                <FiDownload className="h-5 w-5" />
                 Exportar Datos
               </CardTitle>
               <CardDescription>
@@ -143,7 +143,7 @@ const Backup = ({ onDataRestored }) => {
             </CardHeader>
             <CardContent>
               <Button onClick={exportarDatos} className="w-full">
-                <Download className="mr-2 h-4 w-4" />
+                <FiDownload className="mr-2 h-4 w-4" />
                 Descargar Backup
               </Button>
             </CardContent>
@@ -154,7 +154,7 @@ const Backup = ({ onDataRestored }) => {
             <CardHeader>
               <CardTitle className="text-lg">Categorías Personalizables</CardTitle>
               <CardDescription>
-                Edita las listas de palabras clave para la clasificación automática. Se guardan como listas separadas por comas.
+                FiEdita las listas de palabras clave para la clasificación automática. Se guardan como listas separadas por comas.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -188,7 +188,7 @@ const Backup = ({ onDataRestored }) => {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+                <FiUpload className="h-5 w-5" />
                 Importar Datos
               </CardTitle>
               <CardDescription>
@@ -199,7 +199,7 @@ const Backup = ({ onDataRestored }) => {
               <label htmlFor="file-upload">
                 <Button variant="outline" className="w-full cursor-pointer" asChild>
                   <span>
-                    <Upload className="mr-2 h-4 w-4" />
+                    <FiUpload className="mr-2 h-4 w-4" />
                     Seleccionar Archivo
                   </span>
                 </Button>

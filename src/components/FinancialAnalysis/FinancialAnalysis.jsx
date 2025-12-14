@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui-simple/Card';
+import { Badge } from '../ui-simple/Badge';
 import {
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  Target,
-  PieChart,
-  Wallet,
-  CreditCard,
-} from 'lucide-react';
+  FiAlertTriangle,
+  FiCheckCircle,
+  FiInfo,
+  FiTarget,
+  FiPieChart,
+  FiCreditCard,
+  FiPlus,
+} from 'react-icons/fi';
 import { analizarDistribucionFinanciera, calcularProyeccionDeudas } from '../../utils/financialAnalysis';
 import { getConfig, getGastosFijos, getGastosVariables, getIngresos } from '../../utils/storage';
 
@@ -115,7 +115,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
   if (loading) {
     return (
-      <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full lg:lg:mx-auto px-4 py-6">
         <Card>
           <CardContent className="pt-6">
             <p className="text-center text-muted-foreground">Cargando análisis...</p>
@@ -127,11 +127,11 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
   if (!analisis) {
     return (
-      <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full lg:lg:mx-auto px-4 py-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <Info className="h-12 w-12 mx-auto text-muted-foreground" />
+              <FiInfo className="h-12 w-12 mx-auto text-muted-foreground" />
               <div>
                 <h3 className="font-semibold text-lg mb-2">
                   Configura tu ingreso base para ver el análisis
@@ -151,13 +151,13 @@ const FinancialAnalysis = ({ updateTrigger }) => {
   const getTipoIcon = (tipo) => {
     switch (tipo) {
       case 'exito':
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        return <FiCheckCircle className="h-5 w-5 text-green-600" />;
       case 'advertencia':
-        return <AlertTriangle className="h-5 w-5 text-orange-600" />;
+        return <FiAlertTriangle className="h-5 w-5 text-orange-600" />;
       case 'critico':
-        return <AlertTriangle className="h-5 w-5 text-red-600" />;
+        return <FiAlertTriangle className="h-5 w-5 text-red-600" />;
       default:
-        return <Info className="h-5 w-5 text-blue-600" />;
+        return <FiInfo className="h-5 w-5 text-blue-600" />;
     }
   };
 
@@ -175,11 +175,11 @@ const FinancialAnalysis = ({ updateTrigger }) => {
   };
 
   return (
-    <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="w-full px-4 py-6 space-y-6 overflow-x-clip">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <PieChart className="h-6 w-6" />
+          <FiPieChart className="h-6 w-6" />
           <h1 className="text-3xl font-bold tracking-tight">Análisis Financiero</h1>
         </div>
         <div>
@@ -199,7 +199,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
       <Card className="border-2 border-blue-500/20 bg-blue-500/5">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <FiPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             <CardTitle className="text-blue-900 dark:text-blue-100">💰 Tu Presupuesto Este Mes</CardTitle>
           </div>
         </CardHeader>
@@ -319,7 +319,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <FiAlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-red-900">
                   ¡Alerta de Sobregasto!
@@ -340,7 +340,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
           <div className="flex items-center justify-between">
             <CardTitle>Distribución Financiera (Modelo 50/30/20)</CardTitle>
             <Badge variant="outline" className="text-xs">
-              <Target className="h-3 w-3 mr-1" />
+              <FiTarget className="h-3 w-3 mr-1" />
               Objetivo recomendado
             </Badge>
           </div>
@@ -540,7 +540,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
         <Card className="border-2 border-orange-500/20 bg-orange-500/5">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              <FiCreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               <CardTitle className="text-orange-900 dark:text-orange-100">📅 Plan de Salida de Deudas</CardTitle>
             </div>
           </CardHeader>
@@ -577,7 +577,7 @@ const FinancialAnalysis = ({ updateTrigger }) => {
             )}
 
             <div className="bg-card p-4 rounded-lg space-y-3 border border-border">
-              <h4 className="font-semibold text-sm">Calendario de liberación</h4>
+              <h4 className="font-semibold text-sm">FiCalendario de liberación</h4>
               {proyeccionDeudas.todasLasDeudas.map((deuda, index) => (
                 <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div className="flex-1">

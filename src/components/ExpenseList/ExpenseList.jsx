@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { getGastosVariables, updateGastoVariable, deleteGastoVariable, getConfig } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
-import { Card, CardHeader, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Trash2, Calendar, Pencil, X, Check } from 'lucide-react';
+import { Card, CardHeader, CardContent } from '../ui-simple/Card';
+import { Button } from '../ui-simple/Button';
+import { Badge } from '../ui-simple/Badge';
+import { Input } from '../ui-simple/Input';
+import { Label } from '../ui-simple/Label';
+import { FiTrash2, FiCalendar, FiEdit2, FiX, FiCheck } from 'react-icons/fi';
 
 const ExpenseList = ({ updateTrigger, onListChange }) => {
   const [gastosMes, setGastosMes] = useState([]);
-  const [editandoId, setEditandoId] = useState(null);
+  const [editandoId, setFiEditandoId] = useState(null);
   const [formEdicion, setFormEdicion] = useState({});
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
   };
 
   const iniciarEdicion = (gasto) => {
-    setEditandoId(gasto.id);
+    setFiEditandoId(gasto.id);
     setFormEdicion({
       fecha: gasto.fecha,
       concepto: gasto.concepto,
@@ -55,7 +55,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
   };
 
   const cancelarEdicion = () => {
-    setEditandoId(null);
+    setFiEditandoId(null);
     setFormEdicion({});
   };
 
@@ -66,7 +66,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
     };
 
     updateGastoVariable(id, datosActualizados);
-    setEditandoId(null);
+    setFiEditandoId(null);
     setFormEdicion({});
     cargarGastos();
     if (onListChange) onListChange();
@@ -107,11 +107,11 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
           <CardContent className="pt-2 pb-2 px-0">
             <div className="divide-y">
               {gastosMes.map(gasto => {
-                const estaEditando = editandoId === gasto.id;
+                const estaFiEditando = editandoId === gasto.id;
 
                 return (
-                  <div key={gasto.id} className={`py-2 px-4 ${estaEditando ? 'bg-muted/30' : ''}`}>
-                    {estaEditando ? (
+                  <div key={gasto.id} className={`py-2 px-4 ${estaFiEditando ? 'bg-muted/30' : ''}`}>
+                    {estaFiEditando ? (
                       /* MODO EDICIÓN */
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -169,7 +169,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
                             onClick={() => guardarEdicion(gasto.id)}
                             className="flex-1"
                           >
-                            <Check className="h-4 w-4 mr-1" />
+                            <FiCheck className="h-4 w-4 mr-1" />
                             Guardar
                           </Button>
                           <Button
@@ -177,7 +177,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
                             variant="outline"
                             onClick={cancelarEdicion}
                           >
-                            <X className="h-4 w-4" />
+                            <FiX className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -186,7 +186,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
+                            <FiCalendar className="h-4 w-4" />
                             <span>{formatearFecha(gasto.fecha)}</span>
                           </div>
                           <p className="truncate font-medium text-sm mt-1">{gasto.concepto}</p>
@@ -203,7 +203,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
                             className="h-8 w-8"
                             onClick={() => iniciarEdicion(gasto)}
                           >
-                            <Pencil className="h-3 w-3" />
+                            <FiEdit2 className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="destructive"
@@ -211,7 +211,7 @@ const ExpenseList = ({ updateTrigger, onListChange }) => {
                             className="h-8 w-8"
                             onClick={() => eliminar(gasto.id)}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <FiTrash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>

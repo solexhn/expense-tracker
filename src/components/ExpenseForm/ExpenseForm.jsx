@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { saveGastoVariable, getConfig, getGastosVariables, getGastosFijos } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui-simple/Card';
+import { Input } from '../ui-simple/Input';
+import { Label } from '../ui-simple/Label';
+import { Button } from '../ui-simple/Button';
 
 const ExpenseForm = ({ onExpenseAdded }) => {
   const [formData, setFormData] = useState({

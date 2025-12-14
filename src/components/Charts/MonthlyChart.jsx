@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { formatearMoneda, calcularTotalGastosVariablesDeducidos } from '../../utils/calculations';
 import { getGastosVariables } from '../../utils/storage';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui-simple/Card';
 
 const MonthlyChart = ({ resumen }) => {
   let data;

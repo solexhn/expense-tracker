@@ -8,9 +8,9 @@ import {
 } from '../../utils/storage';
 import { obtenerResumenMes, obtenerResumenFondo, formatearMoneda, calcularDiaRealCobro, detectarMejorMes } from '../../utils/calculations';
 import MonthlyChart from '../Charts/MonthlyChart';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, Wallet, Eye, EyeOff } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui-simple/Card';
+import { Button } from '../ui-simple/Button';
+import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiCreditCard, FiEye, FiEyeOff, FiPlus } from 'react-icons/fi';
 
 const Dashboard = () => {
   const [resumen, setResumen] = useState({
@@ -156,7 +156,7 @@ const Dashboard = () => {
   }, [cargarDatos]);
 
   return (
-    <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="w-full px-4 py-6 space-y-6 overflow-x-clip">
       <div className="space-y-3">
         <h1 className="text-3xl font-bold tracking-tight">
           {viewMode === 'fund' ? 'Resumen del Fondo' : 'Resumen del Mes'}
@@ -215,7 +215,7 @@ const Dashboard = () => {
             <Card className="md:col-span-2 border-2 border-green-500/30 bg-green-50 dark:bg-green-900/10">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">💰 Fondo Disponible Actual</CardTitle>
-                <Wallet className="h-5 w-5 text-green-600" />
+                <FiPlus className="h-5 w-5 text-green-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
@@ -230,7 +230,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gastos Fijos (Mensuales)</CardTitle>
-                <CreditCard className="h-4 w-4 text-orange-600" />
+                <FiCreditCard className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
@@ -244,9 +244,9 @@ const Dashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Disponible Real</CardTitle>
                 {resumen.disponibleReal < 0 ? (
-                  <TrendingDown className="h-4 w-4 text-red-600" />
+                  <FiTrendingDown className="h-4 w-4 text-red-600" />
                 ) : (
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <FiTrendingUp className="h-4 w-4 text-green-600" />
                 )}
               </CardHeader>
               <CardContent>
@@ -269,9 +269,9 @@ const Dashboard = () => {
                   aria-label={mostrarIngresos ? 'Ocultar ingresos' : 'Mostrar ingresos'}
                 >
                   {mostrarIngresos ? (
-                    <Eye className="h-4 w-4 text-green-600" />
+                    <FiEye className="h-4 w-4 text-green-600" />
                   ) : (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
+                    <FiEyeOff className="h-4 w-4 text-gray-400" />
                   )}
                 </button>
               </CardHeader>
@@ -285,7 +285,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gastos Fijos</CardTitle>
-                <CreditCard className="h-4 w-4 text-orange-600" />
+                <FiCreditCard className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
@@ -297,7 +297,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gastos Variables</CardTitle>
-                <Wallet className="h-4 w-4 text-blue-600" />
+                <FiPlus className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
@@ -309,7 +309,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gastos Totales</CardTitle>
-                <DollarSign className="h-4 w-4 text-red-600" />
+                <FiDollarSign className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
@@ -322,9 +322,9 @@ const Dashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Saldo Restante</CardTitle>
                 {resumen.saldoRestante < 0 ? (
-                  <TrendingDown className="h-4 w-4 text-red-600" />
+                  <FiTrendingDown className="h-4 w-4 text-red-600" />
                 ) : (
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <FiTrendingUp className="h-4 w-4 text-green-600" />
                 )}
               </CardHeader>
               <CardContent>

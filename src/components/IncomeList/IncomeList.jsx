@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getIngresos, deleteIngreso, getConfig } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
-import { Card, CardHeader, CardContent } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Trash2, Calendar } from 'lucide-react';
+import { Card, CardHeader, CardContent } from '../ui-simple/Card';
+import { Button } from '../ui-simple/Button';
+import { Badge } from '../ui-simple/Badge';
+import { FiTrash2, FiCalendar } from 'react-icons/fi';
 
 const IncomeList = ({ updateTrigger, onListChange }) => {
   const [ingresosMes, setIngresosMes] = useState([]);
@@ -70,7 +70,7 @@ const IncomeList = ({ updateTrigger, onListChange }) => {
                 <div key={ingreso.id} className="flex items-center justify-between py-2 px-4 gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
+                      <FiCalendar className="h-4 w-4" />
                       <span>{formatearFecha(ingreso.fecha)}</span>
                     </div>
                     <p className="truncate font-medium text-sm mt-1">{ingreso.concepto}</p>
@@ -80,7 +80,7 @@ const IncomeList = ({ updateTrigger, onListChange }) => {
                   <div className="flex items-center gap-3 ml-3">
                     <p className="font-semibold text-sm text-green-600">{formatearMoneda(ingreso.cantidad)}</p>
                     <Button variant="destructive" size="icon" onClick={() => eliminar(ingreso.id)}>
-                      <Trash2 className="h-4 w-4" />
+                      <FiTrash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
