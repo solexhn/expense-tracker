@@ -648,7 +648,292 @@ export const analizarDistribucionFinanciera = (
 };
 
 // ============================================
-// 8. EXPORTACIONES
+// 8. ESTRATEGIAS DE PAGO DE DEUDAS (SNOWBALL / AVALANCHE)
+// ============================================
+
+/**
+ * Ordena deudas según estrategia snowball (saldo más pequeño primero)
+ * Motivación: Victorias rápidas al eliminar deudas pequeñas
+ *
+ * @param {Array} deudas - Array de deudas con { nombre, saldoRestante, cuotaMensual, cuotasRestantes }
+ * @returns {Array} Deudas ordenadas por saldo ascendente
+ */
+export const ordenarSnowball = (deudas) => {
+  return [...deudas].sort((a, b) => {
+    const saldoA = (a.cuotaMensual || a.cantidad) * (a.cuotasRestantes || 1);
+    const saldoB = (b.cuotaMensual || b.cantidad) * (b.cuotasRestantes || 1);
+    return saldoA - saldoB;
+  });
+};
+
+/**
+ * Ordena deudas según estrategia avalanche (tasa de interés más alta primero)
+ * Ahorro: Minimiza el total de intereses pagados
+ *
+ * @param {Array} deudas - Array de deudas con { nombre, tasaInteres, ... }
+ * @returns {Array} Deudas ordenadas por tasa de interés descendente
+ */
+export const ordenarAvalanche = (deudas) => {
+  return [...deudas].sort((a, b) => {
+    const tasaA = parseFloat(a.tasaInteres) || 0;
+    const tasaB = parseFloat(b.tasaInteres) || 0;
+    // Si no hay tasa definida, usar snowball como fallback
+    if (tasaA === 0 && tasaB === 0) {
+      const saldoA = (a.cuotaMensual || a.cantidad) * (a.cuotasRestantes || 1);
+      const saldoB = (b.cuotaMensual || b.cantidad) * (b.cuotasRestantes || 1);
+      return saldoA - saldoB;
+    }
+    return tasaB - tasaA;
+  });
+};
+
+/**
+ * Calcula proyección de deudas con estrategia seleccionada
+ *
+ * @param {Array} gastosFijos - Array de gastos fijos
+ * @param {string} estrategia - 'snowball' o 'avalanche'
+ * @returns {Object} Proyección detallada con orden de pago
+ */
+export const calcularProyeccionConEstrategia = (gastosFijos, estrategia = 'snowball') => {
+  // Filtrar solo créditos/deudas
+  const deudas = gastosFijos.filter(g =>
+    g.tipo === 'credito' ||
+    (g.categoria && ['Crédito', 'Pago fraccionado', 'Sequra', 'Cofidis', 'Pepper', 'Carrefour'].some(cat =>
+      g.categoria.toLowerCase().includes(cat.toLowerCase())
+    ))
+  ).filter(d => d.cuotasRestantes && d.cuotasRestantes > 0);
+
+  if (deudas.length === 0) {
+    return {
+      tieneDeudas: false,
+      mensaje: '¡Felicidades! No tienes deudas activas.',
+      estrategia
+    };
+  }
+
+  // Ordenar según estrategia
+  const deudasOrdenadas = estrategia === 'avalanche'
+    ? ordenarAvalanche(deudas)
+    : ordenarSnowball(deudas);
+
+  const totalMensualDeudas = deudas.reduce((sum, d) => sum + parseFloat(d.cantidad), 0);
+
+  // Calcular calendario de liberación mes a mes
+  let deudasActivas = deudasOrdenadas.map(d => ({
+    ...d,
+    saldoRestante: (d.cuotaMensual || d.cantidad) * d.cuotasRestantes,
+    cuotasRestantesActual: d.cuotasRestantes
+  }));
+
+  const calendario = [];
+  let mesActual = 0;
+  let dineroLiberadoAcumulado = 0;
+
+  while (deudasActivas.some(d => d.cuotasRestantesActual > 0)) {
+    mesActual++;
+
+    for (let i = 0; i < deudasActivas.length; i++) {
+      const deuda = deudasActivas[i];
+      if (deuda.cuotasRestantesActual > 0) {
+        deuda.cuotasRestantesActual--;
+
+        if (deuda.cuotasRestantesActual === 0) {
+          calendario.push({
+            mes: mesActual,
+            deuda: deuda.nombre,
+            cuotaLiberada: parseFloat(deuda.cantidad),
+            dineroLiberadoTotal: dineroLiberadoAcumulado + parseFloat(deuda.cantidad)
+          });
+          dineroLiberadoAcumulado += parseFloat(deuda.cantidad);
+        }
+      }
+    }
+
+    // Evitar loop infinito
+    if (mesActual > 360) break;
+  }
+
+  return {
+    tieneDeudas: true,
+    estrategia,
+    estrategiaNombre: estrategia === 'avalanche' ? 'Avalanche (menos intereses)' : 'Snowball (más motivación)',
+    totalDeudas: deudas.length,
+    pagoMensualTotal: totalMensualDeudas,
+    mesesHastaLibertad: mesActual,
+    proximaATerminar: deudasOrdenadas[0] ? {
+      ...deudasOrdenadas[0],
+      posicion: 1
+    } : null,
+    ordenDePago: deudasOrdenadas.map((d, i) => ({
+      posicion: i + 1,
+      nombre: d.nombre,
+      cuotaMensual: d.cantidad,
+      cuotasRestantes: d.cuotasRestantes,
+      saldoEstimado: (d.cuotaMensual || d.cantidad) * d.cuotasRestantes,
+      tasaInteres: d.tasaInteres || null,
+      mesesHastaLiberar: d.cuotasRestantes,
+      dineroQueSeLibera: d.cantidad,
+      esLaSiguiente: i === 0
+    })),
+    calendarioLiberacion: calendario
+  };
+};
+
+/**
+ * Simulador de pago extra de deudas
+ * Calcula cuánto tiempo y dinero ahorras al pagar más cada mes
+ *
+ * @param {Array} gastosFijos - Array de gastos fijos
+ * @param {number} pagoExtraMensual - Cantidad extra a pagar cada mes
+ * @param {string} estrategia - 'snowball' o 'avalanche'
+ * @returns {Object} Simulación con comparativa
+ */
+export const simularPagoExtra = (gastosFijos, pagoExtraMensual = 0, estrategia = 'snowball') => {
+  const pagoExtra = parseFloat(pagoExtraMensual) || 0;
+
+  // Proyección sin pago extra
+  const sinExtra = calcularProyeccionConEstrategia(gastosFijos, estrategia);
+
+  if (!sinExtra.tieneDeudas) {
+    return { tieneDeudas: false };
+  }
+
+  if (pagoExtra <= 0) {
+    return {
+      ...sinExtra,
+      simulacion: null,
+      mensaje: 'Introduce una cantidad de pago extra para ver la simulación'
+    };
+  }
+
+  // Simular con pago extra
+  let deudasActivas = sinExtra.ordenDePago.map(d => ({
+    ...d,
+    saldoRestante: d.saldoEstimado,
+    cuotasRestantesActual: d.cuotasRestantes
+  }));
+
+  let mesActual = 0;
+  let interesAhorradoEstimado = 0;
+  const calendarioConExtra = [];
+
+  while (deudasActivas.some(d => d.saldoRestante > 0)) {
+    mesActual++;
+    let extraDisponible = pagoExtra;
+
+    // Aplicar pagos normales + extra (según estrategia, al primero de la lista)
+    for (let i = 0; i < deudasActivas.length; i++) {
+      const deuda = deudasActivas[i];
+
+      if (deuda.saldoRestante <= 0) continue;
+
+      // Pago normal
+      const pagoNormal = Math.min(deuda.cuotaMensual, deuda.saldoRestante);
+      deuda.saldoRestante -= pagoNormal;
+
+      // Aplicar extra solo a la primera deuda activa (estrategia concentrada)
+      if (extraDisponible > 0 && i === deudasActivas.findIndex(d => d.saldoRestante > 0)) {
+        const pagoExtraReal = Math.min(extraDisponible, deuda.saldoRestante);
+        deuda.saldoRestante -= pagoExtraReal;
+        extraDisponible -= pagoExtraReal;
+
+        // Estimar interés ahorrado (aproximación simple)
+        if (deuda.tasaInteres) {
+          interesAhorradoEstimado += (pagoExtraReal * (deuda.tasaInteres / 100) / 12);
+        }
+      }
+
+      // Si se terminó de pagar
+      if (deuda.saldoRestante <= 0 && deuda.cuotasRestantesActual > 0) {
+        calendarioConExtra.push({
+          mes: mesActual,
+          deuda: deuda.nombre,
+          cuotaLiberada: deuda.cuotaMensual
+        });
+        deuda.cuotasRestantesActual = 0;
+      }
+    }
+
+    // Evitar loop infinito
+    if (mesActual > 360) break;
+  }
+
+  const mesesAhorrados = sinExtra.mesesHastaLibertad - mesActual;
+
+  return {
+    ...sinExtra,
+    simulacion: {
+      pagoExtraMensual: pagoExtra,
+      mesesOriginales: sinExtra.mesesHastaLibertad,
+      mesesConExtra: mesActual,
+      mesesAhorrados,
+      interesAhorradoEstimado: Math.round(interesAhorradoEstimado * 100) / 100,
+      calendarioConExtra,
+      mensaje: mesesAhorrados > 0
+        ? `¡Ahorrarías ${mesesAhorrados} meses pagando ${pagoExtra.toFixed(2)} EUR extra!`
+        : 'El pago extra no reduce significativamente el tiempo'
+    }
+  };
+};
+
+/**
+ * Calcula pronóstico de fin de mes basado en ritmo de gasto
+ *
+ * @param {number} fondoInicial - Fondo al inicio del período
+ * @param {number} fondoActual - Fondo disponible actual
+ * @param {number} diasTranscurridos - Días desde inicio del período
+ * @param {number} diasEnMes - Total de días del mes
+ * @returns {Object} Pronóstico detallado
+ */
+export const calcularPronosticoFinDeMes = (fondoInicial, fondoActual, diasTranscurridos, diasEnMes) => {
+  if (diasTranscurridos <= 0 || diasEnMes <= 0) {
+    return null;
+  }
+
+  const gastado = fondoInicial - fondoActual;
+  const promedioDiario = gastado / diasTranscurridos;
+  const diasRestantes = diasEnMes - diasTranscurridos;
+  const gastoProyectado = promedioDiario * diasRestantes;
+  const fondoProyectadoFinMes = fondoActual - gastoProyectado;
+
+  // Determinar nivel de alerta
+  let nivelAlerta = 'normal';
+  let mensaje = '';
+
+  if (fondoProyectadoFinMes < 0) {
+    nivelAlerta = 'critico';
+    mensaje = `¡ALERTA! A este ritmo terminarás el mes con ${Math.abs(fondoProyectadoFinMes).toFixed(2)} EUR de déficit`;
+  } else if (fondoProyectadoFinMes < 100) {
+    nivelAlerta = 'advertencia';
+    mensaje = `Cuidado: A este ritmo terminarás el mes con solo ${fondoProyectadoFinMes.toFixed(2)} EUR`;
+  } else {
+    mensaje = `Vas bien: Proyección de fin de mes ≈ ${fondoProyectadoFinMes.toFixed(2)} EUR`;
+  }
+
+  return {
+    gastadoHastaAhora: gastado,
+    promedioDiario,
+    diasRestantes,
+    gastoProyectadoRestante: gastoProyectado,
+    fondoProyectadoFinMes,
+    nivelAlerta,
+    mensaje,
+    // Consejos según situación
+    consejos: nivelAlerta === 'critico' ? [
+      `Reduce tu gasto diario de ${promedioDiario.toFixed(2)} EUR a ${((fondoActual - 100) / diasRestantes).toFixed(2)} EUR`,
+      'Revisa gastos de ocio que puedas posponer',
+      'Considera usar sobres de emergencia si los tienes'
+    ] : nivelAlerta === 'advertencia' ? [
+      `Intenta gastar máximo ${((fondoActual - 150) / diasRestantes).toFixed(2)} EUR/día`,
+      'Evita compras no planificadas los próximos días'
+    ] : [
+      '¡Sigue así! Tu gestión del dinero va bien este mes'
+    ]
+  };
+};
+
+// ============================================
+// 9. EXPORTACIONES
 // ============================================
 
 const FINANCIAL_ANALYSIS = {
@@ -662,6 +947,13 @@ const FINANCIAL_ANALYSIS = {
   predecirGastoMensual,
   calcularPresupuestoDisponible,
   calcularProyeccionDeudas,
+  // Nuevas funciones de estrategias de deuda
+  ordenarSnowball,
+  ordenarAvalanche,
+  calcularProyeccionConEstrategia,
+  simularPagoExtra,
+  calcularPronosticoFinDeMes,
+  // Constantes
   CLASIFICACION_CATEGORIAS,
   MODELO_RECOMENDADO,
   MODELO_SIN_DEUDAS,

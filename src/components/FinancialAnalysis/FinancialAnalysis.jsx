@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui-simple/Card';
 import { Badge } from '../ui-simple/Badge';
+import { Button } from '../ui-simple/Button';
+import { Input } from '../ui-simple/Input';
+import { Label } from '../ui-simple/Label';
 import {
   FiAlertTriangle,
   FiCheckCircle,
@@ -9,43 +12,99 @@ import {
   FiPieChart,
   FiCreditCard,
   FiPlus,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiDollarSign,
+  FiCalendar,
+  FiZap,
+  FiAward
 } from 'react-icons/fi';
-import { analizarDistribucionFinanciera, calcularProyeccionDeudas } from '../../utils/financialAnalysis';
-import { getConfig, getGastosFijos, getGastosVariables, getIngresos } from '../../utils/storage';
+import {
+  analizarDistribucionFinanciera,
+  calcularProyeccionConEstrategia,
+  simularPagoExtra,
+  calcularPronosticoFinDeMes
+} from '../../utils/financialAnalysis';
+import {
+  getConfig,
+  getGastosFijos,
+  getGastosVariables,
+  getIngresos,
+  getSobres
+} from '../../utils/storage';
+
+// Importar nuevos componentes
+import EnvelopeBudgeting from '../EnvelopeBudgeting/EnvelopeBudgeting';
+import SavingsGoals from '../SavingsGoals/SavingsGoals';
 
 /**
- * Componente de Análisis Financiero
+ * Componente de Análisis Financiero Mejorado
  *
- * Muestra un análisis completo de la distribución financiera personal
- * basado en el modelo 50/30/20 (Necesidades/Deseos/Ahorro)
+ * Incluye:
+ * - Sistema de sobres (envelope budgeting) - PRIORIDAD 1
+ * - Metas de ahorro motivadoras - PRIORIDAD 2
+ * - Proyección de deudas con snowball/avalanche - PRIORIDAD 3
+ * - Alertas en tiempo real y pronóstico - PRIORIDAD 4
  */
 const FinancialAnalysis = ({ updateTrigger }) => {
   const [analisis, setAnalisis] = useState(null);
   const [mesSeleccionado, setMesSeleccionado] = useState(null);
   const [proyeccionDeudas, setProyeccionDeudas] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sobresData, setSobresData] = useState(null);
+  const [pronostico, setPronostico] = useState(null);
+
+  // Estados para mejoras de deuda
+  const [estrategiaDeuda, setEstrategiaDeuda] = useState('snowball');
+  const [pagoExtraSimulado, setPagoExtraSimulado] = useState('');
+  const [simulacionActiva, setSimulacionActiva] = useState(null);
+
+  // Sección activa (tabs internos)
+  const [seccionActiva, setSeccionActiva] = useState('sobres');
 
   const cargarAnalisis = useCallback(() => {
     try {
       setLoading(true);
 
-      // Obtener datos del storage
       const config = getConfig();
       const gastosFijos = getGastosFijos().filter((g) => g.estado === 'activo');
 
-      // Calcular proyección de deudas
-      const proyeccion = calcularProyeccionDeudas(gastosFijos);
+      // Calcular proyección de deudas con estrategia seleccionada
+      const proyeccion = calcularProyeccionConEstrategia(gastosFijos, estrategiaDeuda);
       setProyeccionDeudas(proyeccion);
 
-      // IMPORTANTE: Usar gastos deducidos del fondo, NO filtrado mensual
-      // En el sistema de fondos, solo nos importan los gastos que ya fueron deducidos
+      // Cargar datos de sobres
+      const sobres = getSobres();
+      setSobresData(sobres);
+
+      // Usar gastos deducidos del fondo
       const gastosVariables = getGastosVariables().filter((g) =>
         g.deductedFromFund === true
       );
 
-      // Calcular ingresos totales - usar fondoDisponible del sistema de fondos
-      // Esto representa el dinero real disponible ahora
       const ingresosTotales = parseFloat(config.fondoDisponible || 0);
+
+      // Calcular pronóstico de fin de mes
+      const hoy = new Date();
+      const diaActual = hoy.getDate();
+      const diasEnMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+
+      // Estimar fondo inicial del mes (aproximación)
+      const totalGastadoEsteMes = gastosVariables
+        .filter(g => g.fecha && g.fecha.startsWith(hoy.toISOString().slice(0, 7)))
+        .reduce((sum, g) => sum + parseFloat(g.cantidad), 0);
+
+      const fondoInicialEstimado = ingresosTotales + totalGastadoEsteMes;
+
+      if (fondoInicialEstimado > 0 && diaActual > 1) {
+        const pronosticoCalculado = calcularPronosticoFinDeMes(
+          fondoInicialEstimado,
+          ingresosTotales,
+          diaActual,
+          diasEnMes
+        );
+        setPronostico(pronosticoCalculado);
+      }
 
       // Validar que haya ingresos
       if (ingresosTotales <= 0) {
@@ -66,7 +125,6 @@ const FinancialAnalysis = ({ updateTrigger }) => {
         })),
       ];
 
-      // Ejecutar análisis
       const resultado = analizarDistribucionFinanciera(
         ingresosTotales,
         gastosParaAnalisis
@@ -78,31 +136,41 @@ const FinancialAnalysis = ({ updateTrigger }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [estrategiaDeuda]);
 
-  // construir lista de meses disponibles para selección
+  // Manejar simulación de pago extra
+  const handleSimulacion = useCallback(() => {
+    if (!pagoExtraSimulado || parseFloat(pagoExtraSimulado) <= 0) {
+      setSimulacionActiva(null);
+      return;
+    }
+
+    const gastosFijos = getGastosFijos().filter((g) => g.estado === 'activo');
+    const resultado = simularPagoExtra(gastosFijos, parseFloat(pagoExtraSimulado), estrategiaDeuda);
+    setSimulacionActiva(resultado.simulacion);
+  }, [pagoExtraSimulado, estrategiaDeuda]);
+
+  // Construir lista de meses disponibles para selección
   const construirMesesDisponibles = () => {
     const config = getConfig();
     const mesesSet = new Set();
-    // añadir mes de referencia
     mesesSet.add(config.mesActual || config.mesReferencia);
 
     getGastosVariables().forEach(g => {
-      if (g.fecha) mesesSet.add(g.fecha.slice(0,7));
+      if (g.fecha) mesesSet.add(g.fecha.slice(0, 7));
     });
 
     getIngresos().forEach(i => {
-      if (i.fecha) mesesSet.add(i.fecha.slice(0,7));
+      if (i.fecha) mesesSet.add(i.fecha.slice(0, 7));
     });
 
-    const meses = Array.from(mesesSet).filter(Boolean).sort().reverse();
-    return meses;
+    return Array.from(mesesSet).filter(Boolean).sort().reverse();
   };
 
   const formatMesLabel = (mes) => {
     try {
-      const [y,m] = mes.split('-');
-      const d = new Date(parseInt(y,10), parseInt(m,10)-1, 1);
+      const [y, m] = mes.split('-');
+      const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
       return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     } catch (err) {
       return mes;
@@ -111,42 +179,12 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
   useEffect(() => {
     cargarAnalisis();
-  }, [cargarAnalisis]);
+  }, [cargarAnalisis, updateTrigger]);
 
-  if (loading) {
-    return (
-      <div className="w-full lg:lg:mx-auto px-4 py-6">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Cargando análisis...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!analisis) {
-    return (
-      <div className="w-full lg:lg:mx-auto px-4 py-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <FiInfo className="h-12 w-12 mx-auto text-muted-foreground" />
-              <div>
-                <h3 className="font-semibold text-lg mb-2">
-                  Configura tu ingreso base para ver el análisis
-                </h3>
-                <p className="text-muted-foreground">
-                  Ve a la pestaña <strong>Ingresos</strong> y configura tu ingreso mensual
-                  para obtener recomendaciones financieras personalizadas.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Callback cuando se actualizan los sobres
+  const handleSobresUpdate = (nuevosSobres) => {
+    setSobresData(nuevosSobres);
+  };
 
   const getTipoIcon = (tipo) => {
     switch (tipo) {
@@ -174,10 +212,48 @@ const FinancialAnalysis = ({ updateTrigger }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="w-full lg:mx-auto px-4 py-6">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">Cargando análisis...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!analisis) {
+    return (
+      <div className="w-full lg:mx-auto px-4 py-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <FiInfo className="h-12 w-12 mx-auto text-muted-foreground" />
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  Configura tu ingreso base para ver el análisis
+                </h3>
+                <p className="text-muted-foreground">
+                  Ve a la pestaña <strong>Ingresos</strong> y configura tu ingreso mensual
+                  para obtener recomendaciones financieras personalizadas.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const disponibleParaGastar = analisis.presupuestoDisponible.disponibleParaGastar;
+  const alertaCritica = disponibleParaGastar < 100;
+
   return (
     <div className="w-full px-4 py-6 space-y-6 overflow-x-clip">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <FiPieChart className="h-6 w-6" />
           <h1 className="text-3xl font-bold tracking-tight">Análisis Financiero</h1>
@@ -195,446 +271,695 @@ const FinancialAnalysis = ({ updateTrigger }) => {
         </div>
       </div>
 
-      {/* NUEVA SECCIÓN: ¿Cuánto me queda para gastar? */}
-      <Card className="border-2 border-blue-500/20 bg-blue-500/5">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <FiPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            <CardTitle className="text-blue-900 dark:text-blue-100">💰 Tu Presupuesto Este Mes</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Disponible AHORA */}
-            <div className="bg-card p-4 rounded-lg border-2 border-green-500/30">
-              <p className="text-sm text-muted-foreground mb-1">💵 Disponible ahora</p>
-              <p className={`text-4xl font-bold ${analisis.presupuestoDisponible.disponibleAhora >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {analisis.presupuestoDisponible.disponibleAhora.toFixed(2)} €
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Ingresos - Gastos fijos - Ya gastado
-              </p>
-            </div>
-
-            {/* Recomendación: cuánto gastar */}
-            <div className="bg-card p-4 rounded-lg border-2 border-blue-500/30">
-              <p className="text-sm text-muted-foreground mb-1">🎯 Puedes gastar (con ahorro)</p>
-              <p className={`text-4xl font-bold ${analisis.presupuestoDisponible.disponibleParaGastar >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                {analisis.presupuestoDisponible.disponibleParaGastar.toFixed(2)} €
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Reservando {analisis.presupuestoDisponible.ahorroRecomendado.toFixed(2)}€ para ahorro (10%)
-              </p>
-            </div>
-          </div>
-
-          {/* Presupuestos por categoría */}
-          <div className="bg-card p-4 rounded-lg space-y-3 border border-border">
-            <h4 className="font-semibold text-sm">Presupuestos Sugeridos vs Gastado</h4>
-
-            {/* Necesidades */}
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>🏠 Necesidades</span>
-                <span className={analisis.presupuestoDisponible.excedioPresupuestoNecesidades ? 'text-red-600 dark:text-red-400 font-bold' : 'text-green-600 dark:text-green-400'}>
-                  {analisis.presupuestoDisponible.gastadoNecesidades.toFixed(2)}€ / {analisis.presupuestoDisponible.presupuestoNecesidades.toFixed(2)}€
-                </span>
+      {/* ALERTA CRÍTICA: Disponible < 100 EUR */}
+      {alertaCritica && (
+        <Card className="border-2 border-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row items-start gap-4">
+              <div className="p-3 bg-red-100 dark:bg-red-800 rounded-full shrink-0">
+                <FiAlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${analisis.presupuestoDisponible.excedioPresupuestoNecesidades ? 'bg-red-500' : 'bg-blue-500'}`}
-                  style={{width: `${Math.min((analisis.presupuestoDisponible.gastadoNecesidades / analisis.presupuestoDisponible.presupuestoNecesidades) * 100, 100)}%`}}
-                />
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-red-900 dark:text-red-100 mb-2">
+                  ¡Tu disponible está por debajo de 100 EUR!
+                </h3>
+                <p className="text-red-700 dark:text-red-300 mb-3">
+                  Solo tienes <strong>{disponibleParaGastar.toFixed(2)} EUR</strong> disponibles para gastar.
+                  Es momento de tomar acción inmediata.
+                </p>
+                <div className="bg-red-100 dark:bg-red-800/50 p-3 rounded-lg">
+                  <p className="font-semibold text-red-900 dark:text-red-100 mb-2">Acciones inmediatas:</p>
+                  <ul className="text-sm text-red-800 dark:text-red-200 space-y-1">
+                    <li>• Revisa los sobres de Ocio - ¿puedes mover dinero a necesidades?</li>
+                    <li>• Pospón cualquier gasto no esencial esta semana</li>
+                    <li>• Busca ingresos extra urgentes si es posible</li>
+                  </ul>
+                </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
 
-            {/* Ocio */}
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>🎮 Ocio/Deseos</span>
-                <span className={analisis.presupuestoDisponible.excedioPresupuestoOcio ? 'text-red-600 dark:text-red-400 font-bold' : 'text-green-600 dark:text-green-400'}>
-                  {analisis.presupuestoDisponible.gastadoOcio.toFixed(2)}€ / {analisis.presupuestoDisponible.presupuestoOcio.toFixed(2)}€
-                </span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${analisis.presupuestoDisponible.excedioPresupuestoOcio ? 'bg-red-500' : 'bg-purple-500'}`}
-                  style={{width: `${Math.min((analisis.presupuestoDisponible.gastadoOcio / analisis.presupuestoDisponible.presupuestoOcio) * 100, 100)}%`}}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Banner informativo sobre el sistema de fondos */}
-          <div className="bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 p-3 rounded-lg text-sm mt-3">
-            <p className="font-medium text-blue-900 dark:text-blue-100">
-              💡 Análisis basado en tu fondo disponible actual
-            </p>
-            <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">
-              Los porcentajes se calculan sobre el dinero real que tienes ahora, no sobre ingresos mensuales estimados
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Resumen general (simplificado) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumen Mensual</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Ingresos Totales</p>
-              <p className="text-2xl font-bold text-green-600">
-                {analisis.ingresosMensuales.toFixed(2)} €
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Gastos Fijos (obligatorios)</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {analisis.presupuestoDisponible.gastosFijos.toFixed(2)} €
-              </p>
-              <p className="text-xs text-muted-foreground">Necesidades + Deudas</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Ahorro Real</p>
-              <p
-                className={`text-2xl font-bold ${
-                  analisis.restante >= analisis.presupuestoDisponible.ahorroRecomendado ? 'text-green-600' : 'text-orange-600'
-                }`}
-              >
-                {analisis.restante.toFixed(2)} €
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {analisis.presupuestoDisponible.cumpleAhorroMinimo ? '✅ Cumples el 10%' : '⚠️ Por debajo del 10%'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Alerta de sobregasto */}
-      {analisis.sobregasto.haySobregasto && (
-        <Card className="border-red-200 bg-red-50">
+      {/* PRONÓSTICO DE FIN DE MES */}
+      {pronostico && (
+        <Card className={`border-2 ${
+          pronostico.nivelAlerta === 'critico' ? 'border-red-500 bg-red-50 dark:bg-red-900/10' :
+          pronostico.nivelAlerta === 'advertencia' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' :
+          'border-green-500 bg-green-50 dark:bg-green-900/10'
+        }`}>
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
-              <FiAlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-red-900">
-                  ¡Alerta de Sobregasto!
+              {pronostico.nivelAlerta === 'critico' ? (
+                <FiTrendingDown className="h-6 w-6 text-red-600" />
+              ) : pronostico.nivelAlerta === 'advertencia' ? (
+                <FiAlertTriangle className="h-6 w-6 text-yellow-600" />
+              ) : (
+                <FiTrendingUp className="h-6 w-6 text-green-600" />
+              )}
+              <div className="flex-1">
+                <h3 className={`font-semibold ${
+                  pronostico.nivelAlerta === 'critico' ? 'text-red-900 dark:text-red-100' :
+                  pronostico.nivelAlerta === 'advertencia' ? 'text-yellow-900 dark:text-yellow-100' :
+                  'text-green-900 dark:text-green-100'
+                }`}>
+                  Pronóstico de Fin de Mes
                 </h3>
-                <p className="text-sm text-red-800 mt-1">
-                  Estás gastando más de lo que ingresas. Revisa tus gastos para
-                  evitar déficit financiero.
+                <p className={`text-sm mt-1 ${
+                  pronostico.nivelAlerta === 'critico' ? 'text-red-700 dark:text-red-300' :
+                  pronostico.nivelAlerta === 'advertencia' ? 'text-yellow-700 dark:text-yellow-300' :
+                  'text-green-700 dark:text-green-300'
+                }`}>
+                  {pronostico.mensaje}
                 </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded">
+                    <span className="text-muted-foreground block">Gastado</span>
+                    <span className="font-bold">{pronostico.gastadoHastaAhora.toFixed(2)} EUR</span>
+                  </div>
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded">
+                    <span className="text-muted-foreground block">Promedio/día</span>
+                    <span className="font-bold">{pronostico.promedioDiario.toFixed(2)} EUR</span>
+                  </div>
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded">
+                    <span className="text-muted-foreground block">Días restantes</span>
+                    <span className="font-bold">{pronostico.diasRestantes}</span>
+                  </div>
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded">
+                    <span className="text-muted-foreground block">Proyección</span>
+                    <span className={`font-bold ${
+                      pronostico.fondoProyectadoFinMes < 0 ? 'text-red-600' :
+                      pronostico.fondoProyectadoFinMes < 100 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {pronostico.fondoProyectadoFinMes.toFixed(2)} EUR
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Distribución 50/30/20 */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Distribución Financiera (Modelo 50/30/20)</CardTitle>
-            <Badge variant="outline" className="text-xs">
-              <FiTarget className="h-3 w-3 mr-1" />
-              Objetivo recomendado
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Necesidades */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-600 rounded-full" />
-                <span className="font-medium">Necesidades</span>
-              </div>
-              <div className="text-right">
-                <span className="font-bold">
-                  {analisis.desglose.necesidades.porcentaje.toFixed(1)}%
-                </span>
-                <span className="text-sm text-muted-foreground ml-2">
-                  (Recomendado: {analisis.comparacion.necesidades.recomendado}%)
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 transition-all"
-                  style={{
-                    width: `${Math.min(analisis.desglose.necesidades.porcentaje, 100)}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium w-20 text-right">
-                {analisis.desglose.necesidades.total.toFixed(2)} €
-              </span>
-            </div>
-            {analisis.comparacion.necesidades.diferencia !== 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {analisis.comparacion.necesidades.diferencia > 0
-                  ? `${analisis.comparacion.necesidades.diferencia.toFixed(1)}% por encima`
-                  : `${Math.abs(analisis.comparacion.necesidades.diferencia).toFixed(1)}% por debajo`}
-              </p>
-            )}
-          </div>
+      {/* NAVEGACIÓN DE SECCIONES */}
+      <div className="flex flex-wrap gap-2 p-2 bg-muted/50 rounded-lg">
+        <Button
+          variant={seccionActiva === 'sobres' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSeccionActiva('sobres')}
+          className="flex-1 md:flex-none"
+        >
+          <FiTarget className="h-4 w-4 mr-2" />
+          Sobres
+        </Button>
+        <Button
+          variant={seccionActiva === 'metas' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSeccionActiva('metas')}
+          className="flex-1 md:flex-none"
+        >
+          <FiAward className="h-4 w-4 mr-2" />
+          Metas
+        </Button>
+        <Button
+          variant={seccionActiva === 'deudas' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSeccionActiva('deudas')}
+          className="flex-1 md:flex-none"
+        >
+          <FiCreditCard className="h-4 w-4 mr-2" />
+          Deudas
+        </Button>
+        <Button
+          variant={seccionActiva === 'analisis' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSeccionActiva('analisis')}
+          className="flex-1 md:flex-none"
+        >
+          <FiPieChart className="h-4 w-4 mr-2" />
+          50/30/20
+        </Button>
+      </div>
 
-          {/* Deseos */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-purple-600 rounded-full" />
-                <span className="font-medium">Deseos</span>
-              </div>
-              <div className="text-right">
-                <span className="font-bold">
-                  {analisis.desglose.deseos.porcentaje.toFixed(1)}%
-                </span>
-                <span className="text-sm text-muted-foreground ml-2">
-                  (Recomendado: {analisis.comparacion.deseos.recomendado}%)
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-purple-600 transition-all"
-                  style={{
-                    width: `${Math.min(analisis.desglose.deseos.porcentaje, 100)}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium w-20 text-right">
-                {analisis.desglose.deseos.total.toFixed(2)} €
-              </span>
-            </div>
-            {analisis.comparacion.deseos.diferencia !== 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {analisis.comparacion.deseos.diferencia > 0
-                  ? `${analisis.comparacion.deseos.diferencia.toFixed(1)}% por encima`
-                  : `${Math.abs(analisis.comparacion.deseos.diferencia).toFixed(1)}% por debajo`}
-              </p>
-            )}
-          </div>
+      {/* SECCIÓN: SISTEMA DE SOBRES */}
+      {seccionActiva === 'sobres' && (
+        <EnvelopeBudgeting onSobresUpdate={handleSobresUpdate} />
+      )}
 
-          {/* Deudas */}
-          {analisis.desglose.deudas && analisis.desglose.deudas.total > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-600 rounded-full" />
-                  <span className="font-medium">Deudas/Créditos</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-red-600">
-                    {analisis.desglose.deudas.porcentaje.toFixed(1)}%
-                  </span>
-                  <span className="text-sm text-muted-foreground ml-2">
-                    (Mantener &lt; 30%)
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-red-600 transition-all"
-                    style={{
-                      width: `${Math.min(analisis.desglose.deudas.porcentaje, 100)}%`,
-                    }}
-                  />
-                </div>
-                <span className="text-sm font-medium w-20 text-right">
-                  {analisis.desglose.deudas.total.toFixed(2)} €
-                </span>
-              </div>
-              <p className="text-xs text-red-600 mt-1 font-medium">
-                Pagos mensuales de créditos y financiación
-              </p>
-            </div>
-          )}
+      {/* SECCIÓN: METAS DE AHORRO */}
+      {seccionActiva === 'metas' && (
+        <SavingsGoals
+          fondoDisponible={analisis.presupuestoDisponible.disponibleAhora}
+          sobresData={sobresData}
+        />
+      )}
 
-          {/* Ahorro */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-600 rounded-full" />
-                <span className="font-medium">Ahorro</span>
-              </div>
-              <div className="text-right">
-                <span className="font-bold">
-                  {analisis.desglose.ahorro.porcentaje.toFixed(1)}%
-                </span>
-                <span className="text-sm text-muted-foreground ml-2">
-                  (Recomendado: {analisis.comparacion.ahorro.recomendado}%)
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-600 transition-all"
-                  style={{
-                    width: `${Math.min(analisis.desglose.ahorro.porcentaje, 100)}%`,
-                  }}
-                />
-              </div>
-              <span className="text-sm font-medium w-20 text-right">
-                {analisis.desglose.ahorro.total.toFixed(2)} €
-              </span>
-            </div>
-            {analisis.comparacion.ahorro.diferencia !== 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {analisis.comparacion.ahorro.diferencia > 0
-                  ? `${analisis.comparacion.ahorro.diferencia.toFixed(1)}% por encima`
-                  : `${Math.abs(analisis.comparacion.ahorro.diferencia).toFixed(1)}% por debajo`}
-              </p>
-            )}
-          </div>
-
-          {/* Gastos sin clasificar */}
-          {analisis.desglose.sin_clasificar && analisis.desglose.sin_clasificar.total > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-gray-400 rounded-full" />
-                  <span className="font-medium">Sin clasificar</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-gray-600">
-                    {analisis.desglose.sin_clasificar.porcentaje.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gray-400 transition-all"
-                    style={{
-                      width: `${Math.min(analisis.desglose.sin_clasificar.porcentaje, 100)}%`,
-                    }}
-                  />
-                </div>
-                <span className="text-sm font-medium w-20 text-right">
-                  {analisis.desglose.sin_clasificar.total.toFixed(2)} €
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Asigna categorías a estos gastos para mejor análisis
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Predicción mensual - DESHABILITADO en sistema de fondos */}
-      {/* En el sistema de fondos continuos, la predicción mensual no tiene sentido */}
-      {/* porque no hay reset mensual. El "presupuesto disponible" ya muestra esto */}
-
-      {/* Proyección de deudas */}
-      {proyeccionDeudas && proyeccionDeudas.tieneDeudas && (
-        <Card className="border-2 border-orange-500/20 bg-orange-500/5">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <FiCreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              <CardTitle className="text-orange-900 dark:text-orange-100">📅 Plan de Salida de Deudas</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-card p-4 rounded-lg border border-border">
-              <p className="text-sm text-muted-foreground mb-2">Resumen de deudas activas</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Total de créditos</p>
-                  <p className="text-2xl font-bold">{proyeccionDeudas.totalDeudas}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Pago mensual total</p>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                    {proyeccionDeudas.pagoMensualTotal.toFixed(2)} €
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {proyeccionDeudas.proximaATerminar && (
-              <div className="bg-green-500/10 border-2 border-green-500/30 p-4 rounded-lg">
-                <p className="font-semibold text-green-900 dark:text-green-100 mb-2">
-                  🎯 Próximo crédito a terminar
-                </p>
-                <div className="space-y-1">
-                  <p className="text-lg font-bold">{proyeccionDeudas.proximaATerminar.nombre}</p>
-                  <p className="text-sm">
-                    En <span className="font-bold">{proyeccionDeudas.proximaATerminar.cuotasRestantes} meses</span> liberarás{' '}
-                    <span className="font-bold text-green-700 dark:text-green-400">{proyeccionDeudas.proximaATerminar.cantidad.toFixed(2)} €/mes</span>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-card p-4 rounded-lg space-y-3 border border-border">
-              <h4 className="font-semibold text-sm">FiCalendario de liberación</h4>
-              {proyeccionDeudas.todasLasDeudas.map((deuda, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{deuda.nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {deuda.cuotasRestantes} meses restantes
+      {/* SECCIÓN: PROYECCIÓN DE DEUDAS MEJORADA */}
+      {seccionActiva === 'deudas' && proyeccionDeudas && (
+        <div className="space-y-4">
+          {!proyeccionDeudas.tieneDeudas ? (
+            <Card className="border-2 border-green-500 bg-green-50 dark:bg-green-900/10">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl">🎉</span>
+                  <div>
+                    <h3 className="text-xl font-bold text-green-900 dark:text-green-100">
+                      ¡No tienes deudas activas!
+                    </h3>
+                    <p className="text-green-700 dark:text-green-300">
+                      Aprovecha para aumentar tu fondo de emergencia y metas de ahorro.
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm">{deuda.cuotaMensual.toFixed(2)} €/mes</p>
-                    <p className="text-xs text-green-600">+{deuda.dineroQueSeLibera.toFixed(2)} € al terminar</p>
-                  </div>
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Header de deudas con toggle de estrategia */}
+              <Card className="border-2 border-orange-500/20 bg-orange-500/5">
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <FiCreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                      <CardTitle className="text-orange-900 dark:text-orange-100">
+                        Plan de Salida de Deudas
+                      </CardTitle>
+                    </div>
+                    {/* Toggle de estrategia */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm whitespace-nowrap">Estrategia:</Label>
+                      <select
+                        value={estrategiaDeuda}
+                        onChange={(e) => setEstrategiaDeuda(e.target.value)}
+                        className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                      >
+                        <option value="snowball">Snowball (motivación)</option>
+                        <option value="avalanche">Avalanche (ahorro)</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Explicación de la estrategia */}
+                  <div className={`p-3 rounded-lg ${
+                    estrategiaDeuda === 'snowball'
+                      ? 'bg-purple-100 dark:bg-purple-900/20 border border-purple-300 dark:border-purple-700'
+                      : 'bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      estrategiaDeuda === 'snowball'
+                        ? 'text-purple-900 dark:text-purple-100'
+                        : 'text-blue-900 dark:text-blue-100'
+                    }`}>
+                      {estrategiaDeuda === 'snowball'
+                        ? '⚡ Snowball: Paga primero las deudas más pequeñas para ganar impulso motivacional'
+                        : '💰 Avalanche: Paga primero las deudas con mayor interés para ahorrar más dinero'
+                      }
+                    </p>
+                  </div>
 
-            <div className="bg-blue-100 border-2 border-blue-300 p-4 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2">💡 Estrategia recomendada</p>
-              <ul className="text-sm space-y-1 text-blue-800">
-                <li>• Cuando termines un crédito, NO adquieras nuevos gastos</li>
-                <li>• Destina ese dinero a ahorrar o pagar otras deudas</li>
-                <li>• Al final liberarás {proyeccionDeudas.pagoMensualTotal.toFixed(2)}€/mes</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+                  {/* Resumen */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-card p-3 rounded-lg border">
+                      <p className="text-xs text-muted-foreground">Total deudas</p>
+                      <p className="text-2xl font-bold">{proyeccionDeudas.totalDeudas}</p>
+                    </div>
+                    <div className="bg-card p-3 rounded-lg border">
+                      <p className="text-xs text-muted-foreground">Pago mensual</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {proyeccionDeudas.pagoMensualTotal.toFixed(2)} EUR
+                      </p>
+                    </div>
+                    <div className="bg-card p-3 rounded-lg border">
+                      <p className="text-xs text-muted-foreground">Meses restantes</p>
+                      <p className="text-2xl font-bold">{proyeccionDeudas.mesesHastaLibertad}</p>
+                    </div>
+                    <div className="bg-card p-3 rounded-lg border">
+                      <p className="text-xs text-muted-foreground">Libertad en</p>
+                      <p className="text-lg font-bold">
+                        {new Date(new Date().setMonth(new Date().getMonth() + proyeccionDeudas.mesesHastaLibertad))
+                          .toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Próxima a terminar destacada */}
+                  {proyeccionDeudas.proximaATerminar && (
+                    <div className="bg-green-500/10 border-2 border-green-500/30 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FiZap className="h-5 w-5 text-green-600" />
+                        <p className="font-semibold text-green-900 dark:text-green-100">
+                          ¡Tu siguiente victoria!
+                        </p>
+                      </div>
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                        <div>
+                          <p className="text-lg font-bold">{proyeccionDeudas.proximaATerminar.nombre}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Termina en {proyeccionDeudas.proximaATerminar.cuotasRestantes} meses
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Al terminar liberarás</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            +{proyeccionDeudas.proximaATerminar.cantidad.toFixed(2)} EUR/mes
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Simulador de pago extra */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FiDollarSign className="h-5 w-5" />
+                    Simulador de Pago Extra
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    ¿Qué pasaría si pudieras pagar un poco más cada mes?
+                  </p>
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label>Pago extra mensual (EUR)</Label>
+                      <Input
+                        type="number"
+                        step="10"
+                        min="0"
+                        placeholder="50"
+                        value={pagoExtraSimulado}
+                        onChange={(e) => setPagoExtraSimulado(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button onClick={handleSimulacion}>
+                        Simular
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Resultado de la simulación */}
+                  {simulacionActiva && (
+                    <div className="bg-green-100 dark:bg-green-900/20 border-2 border-green-500 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-2xl">🚀</span>
+                        <p className="font-bold text-green-900 dark:text-green-100">
+                          {simulacionActiva.mensaje}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground block">Sin pago extra</span>
+                          <span className="font-bold">{simulacionActiva.mesesOriginales} meses</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Con pago extra</span>
+                          <span className="font-bold text-green-600">{simulacionActiva.mesesConExtra} meses</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Tiempo ahorrado</span>
+                          <span className="font-bold text-green-600">{simulacionActiva.mesesAhorrados} meses</span>
+                        </div>
+                      </div>
+                      {simulacionActiva.interesAhorradoEstimado > 0 && (
+                        <p className="text-sm mt-2 text-green-700 dark:text-green-300">
+                          Intereses ahorrados estimados: ~{simulacionActiva.interesAhorradoEstimado.toFixed(2)} EUR
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Lista ordenada de deudas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FiCalendar className="h-5 w-5" />
+                    Orden de Pago ({proyeccionDeudas.estrategiaNombre})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {proyeccionDeudas.ordenDePago.map((deuda, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                          deuda.esLaSiguiente
+                            ? 'bg-green-50 dark:bg-green-900/10 border-green-500'
+                            : 'bg-card'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                            deuda.esLaSiguiente
+                              ? 'bg-green-500 text-white'
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {deuda.posicion}
+                          </div>
+                          <div>
+                            <p className="font-medium">{deuda.nombre}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {deuda.cuotasRestantes} cuotas restantes
+                              {deuda.tasaInteres && ` • ${deuda.tasaInteres}% TAE`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{deuda.cuotaMensual.toFixed(2)} EUR/mes</p>
+                          <p className="text-xs text-green-600">
+                            Libera +{deuda.dineroQueSeLibera.toFixed(2)} EUR
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Consejo estratégico */}
+              <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <FiInfo className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                        Estrategia recomendada
+                      </p>
+                      <ul className="text-sm space-y-1 text-blue-800 dark:text-blue-200">
+                        <li>• Cuando termines "{proyeccionDeudas.proximaATerminar?.nombre}", NO gastes ese dinero</li>
+                        <li>• Destina los {proyeccionDeudas.proximaATerminar?.cantidad.toFixed(2)} EUR extra a la siguiente deuda</li>
+                        <li>• Este "efecto bola de nieve" acelera tu libertad financiera</li>
+                        <li>• Al final liberarás {proyeccionDeudas.pagoMensualTotal.toFixed(2)} EUR/mes para ahorro e inversión</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
       )}
 
-      {/* Sugerencias */}
-      <div className="space-y-3">
-        <h2 className="text-2xl font-bold tracking-tight">
-          Recomendaciones Personalizadas
-        </h2>
-        {analisis.sugerencias.map((sugerencia, index) => (
-          <Card key={index}>
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                {getTipoIcon(sugerencia.tipo)}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge className={getTipoBadgeClass(sugerencia.tipo)}>
-                      {sugerencia.tipo}
-                    </Badge>
-                    {sugerencia.categoria && (
-                      <Badge variant="outline" className="text-xs">
-                        {sugerencia.categoria}
-                      </Badge>
-                    )}
+      {/* SECCIÓN: ANÁLISIS 50/30/20 */}
+      {seccionActiva === 'analisis' && (
+        <div className="space-y-6">
+          {/* Tu Presupuesto Este Mes */}
+          <Card className="border-2 border-blue-500/20 bg-blue-500/5">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <FiPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <CardTitle className="text-blue-900 dark:text-blue-100">Tu Presupuesto Este Mes</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-card p-4 rounded-lg border-2 border-green-500/30">
+                  <p className="text-sm text-muted-foreground mb-1">Disponible ahora</p>
+                  <p className={`text-4xl font-bold ${analisis.presupuestoDisponible.disponibleAhora >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {analisis.presupuestoDisponible.disponibleAhora.toFixed(2)} EUR
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Ingresos - Gastos fijos - Ya gastado
+                  </p>
+                </div>
+
+                <div className="bg-card p-4 rounded-lg border-2 border-blue-500/30">
+                  <p className="text-sm text-muted-foreground mb-1">Puedes gastar (con ahorro)</p>
+                  <p className={`text-4xl font-bold ${analisis.presupuestoDisponible.disponibleParaGastar >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    {analisis.presupuestoDisponible.disponibleParaGastar.toFixed(2)} EUR
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Reservando {analisis.presupuestoDisponible.ahorroRecomendado.toFixed(2)} EUR para ahorro (10%)
+                  </p>
+                </div>
+              </div>
+
+              {/* Presupuestos por categoría */}
+              <div className="bg-card p-4 rounded-lg space-y-3 border border-border">
+                <h4 className="font-semibold text-sm">Presupuestos Sugeridos vs Gastado</h4>
+
+                {/* Necesidades */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Necesidades</span>
+                    <span className={analisis.presupuestoDisponible.excedioPresupuestoNecesidades ? 'text-red-600 dark:text-red-400 font-bold' : 'text-green-600 dark:text-green-400'}>
+                      {analisis.presupuestoDisponible.gastadoNecesidades.toFixed(2)} EUR / {analisis.presupuestoDisponible.presupuestoNecesidades.toFixed(2)} EUR
+                    </span>
                   </div>
-                  <p className="font-medium mb-1">{sugerencia.mensaje}</p>
-                  <p className="text-sm text-muted-foreground">{sugerencia.accion}</p>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${analisis.presupuestoDisponible.excedioPresupuestoNecesidades ? 'bg-red-500' : 'bg-blue-500'}`}
+                      style={{ width: `${Math.min((analisis.presupuestoDisponible.gastadoNecesidades / analisis.presupuestoDisponible.presupuestoNecesidades) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Ocio */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Ocio/Deseos</span>
+                    <span className={analisis.presupuestoDisponible.excedioPresupuestoOcio ? 'text-red-600 dark:text-red-400 font-bold' : 'text-green-600 dark:text-green-400'}>
+                      {analisis.presupuestoDisponible.gastadoOcio.toFixed(2)} EUR / {analisis.presupuestoDisponible.presupuestoOcio.toFixed(2)} EUR
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${analisis.presupuestoDisponible.excedioPresupuestoOcio ? 'bg-red-500' : 'bg-purple-500'}`}
+                      style={{ width: `${Math.min((analisis.presupuestoDisponible.gastadoOcio / analisis.presupuestoDisponible.presupuestoOcio) * 100, 100)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+
+          {/* Resumen general */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumen Mensual</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Ingresos Totales</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {analisis.ingresosMensuales.toFixed(2)} EUR
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Gastos Fijos (obligatorios)</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {analisis.presupuestoDisponible.gastosFijos.toFixed(2)} EUR
+                  </p>
+                  <p className="text-xs text-muted-foreground">Necesidades + Deudas</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ahorro Real</p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      analisis.restante >= analisis.presupuestoDisponible.ahorroRecomendado ? 'text-green-600' : 'text-orange-600'
+                    }`}
+                  >
+                    {analisis.restante.toFixed(2)} EUR
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {analisis.presupuestoDisponible.cumpleAhorroMinimo ? '✅ Cumples el 10%' : '⚠️ Por debajo del 10%'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Alerta de sobregasto */}
+          {analisis.sobregasto.haySobregasto && (
+            <Card className="border-red-200 bg-red-50 dark:bg-red-900/10">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <FiAlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-red-900 dark:text-red-100">
+                      ¡Alerta de Sobregasto!
+                    </h3>
+                    <p className="text-sm text-red-800 dark:text-red-200 mt-1">
+                      Estás gastando más de lo que ingresas. Revisa tus gastos para
+                      evitar déficit financiero.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Distribución 50/30/20 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Distribución Financiera (Modelo 50/30/20)</CardTitle>
+                <Badge variant="outline" className="text-xs">
+                  <FiTarget className="h-3 w-3 mr-1" />
+                  Objetivo recomendado
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Necesidades */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-600 rounded-full" />
+                    <span className="font-medium">Necesidades</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold">
+                      {analisis.desglose.necesidades.porcentaje.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (Recomendado: {analisis.comparacion.necesidades.recomendado}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 transition-all"
+                      style={{ width: `${Math.min(analisis.desglose.necesidades.porcentaje, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium w-24 text-right">
+                    {analisis.desglose.necesidades.total.toFixed(2)} EUR
+                  </span>
+                </div>
+              </div>
+
+              {/* Deseos */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-purple-600 rounded-full" />
+                    <span className="font-medium">Deseos</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold">
+                      {analisis.desglose.deseos.porcentaje.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (Recomendado: {analisis.comparacion.deseos.recomendado}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-600 transition-all"
+                      style={{ width: `${Math.min(analisis.desglose.deseos.porcentaje, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium w-24 text-right">
+                    {analisis.desglose.deseos.total.toFixed(2)} EUR
+                  </span>
+                </div>
+              </div>
+
+              {/* Deudas */}
+              {analisis.desglose.deudas && analisis.desglose.deudas.total > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-600 rounded-full" />
+                      <span className="font-medium">Deudas/Créditos</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-red-600">
+                        {analisis.desglose.deudas.porcentaje.toFixed(1)}%
+                      </span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        (Mantener &lt; 30%)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-red-600 transition-all"
+                        style={{ width: `${Math.min(analisis.desglose.deudas.porcentaje, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium w-24 text-right">
+                      {analisis.desglose.deudas.total.toFixed(2)} EUR
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Ahorro */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-600 rounded-full" />
+                    <span className="font-medium">Ahorro</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold">
+                      {analisis.desglose.ahorro.porcentaje.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (Recomendado: {analisis.comparacion.ahorro.recomendado}%)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-600 transition-all"
+                      style={{ width: `${Math.min(analisis.desglose.ahorro.porcentaje, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium w-24 text-right">
+                    {analisis.desglose.ahorro.total.toFixed(2)} EUR
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sugerencias */}
+          <div className="space-y-3">
+            <h2 className="text-2xl font-bold tracking-tight">
+              Recomendaciones Personalizadas
+            </h2>
+            {analisis.sugerencias.map((sugerencia, index) => (
+              <Card key={index}>
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    {getTipoIcon(sugerencia.tipo)}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className={getTipoBadgeClass(sugerencia.tipo)}>
+                          {sugerencia.tipo}
+                        </Badge>
+                        {sugerencia.categoria && (
+                          <Badge variant="outline" className="text-xs">
+                            {sugerencia.categoria}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="font-medium mb-1">{sugerencia.mensaje}</p>
+                      <p className="text-sm text-muted-foreground">{sugerencia.accion}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

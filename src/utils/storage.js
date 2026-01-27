@@ -3,8 +3,11 @@ const KEYS = {
   GASTOS_FIJOS: 'gastosFijos',
   GASTOS_VARIABLES: 'gastosVariables',
   INGRESOS: 'ingresos',
-  CONFIG: 'config'
-  ,CLASIFICACION_CATEGORIAS: 'clasificacionCategorias'
+  CONFIG: 'config',
+  CLASIFICACION_CATEGORIAS: 'clasificacionCategorias',
+  // Nuevas claves para sistema de sobres y metas
+  SOBRES: 'sobresPresupuesto',
+  METAS_AHORRO: 'metasAhorro'
 };
 
 // ============ FUNCIONES GENÉRICAS ============
@@ -219,4 +222,380 @@ export const getClasificacionCategorias = () => {
 
 export const saveClasificacionCategorias = (obj) => {
   saveToStorage(KEYS.CLASIFICACION_CATEGORIAS, obj);
+};
+
+// ============ SISTEMA DE SOBRES (ENVELOPE BUDGETING) ============
+
+/**
+ * Categorías predefinidas para sobres
+ * El usuario puede crear más, pero estas son las básicas
+ */
+export const CATEGORIAS_SOBRES_DEFAULT = [
+  { id: 'necesidades', nombre: '🏠 Necesidades', color: 'blue', tipo: 'fijo' },
+  { id: 'alimentacion', nombre: '🛒 Alimentación', color: 'green', tipo: 'variable' },
+  { id: 'transporte', nombre: '🚗 Transporte', color: 'yellow', tipo: 'variable' },
+  { id: 'ocio', nombre: '🎮 Ocio', color: 'purple', tipo: 'variable' },
+  { id: 'ahorro_emergencia', nombre: '🛡️ Fondo Emergencia', color: 'emerald', tipo: 'ahorro' },
+  { id: 'pago_extra_deudas', nombre: '💳 Pago Extra Deudas', color: 'red', tipo: 'deuda' },
+  { id: 'otros', nombre: '📦 Otros', color: 'gray', tipo: 'variable' }
+];
+
+/**
+ * Obtiene los sobres guardados o inicializa con defaults
+ * @returns {Object} { sobres: Array, dineroSinAsignar: number, ultimaActualizacion: string }
+ */
+export const getSobres = () => {
+  const stored = localStorage.getItem(KEYS.SOBRES);
+
+  if (!stored) {
+    // Inicializar con sobres vacíos
+    const initial = {
+      sobres: CATEGORIAS_SOBRES_DEFAULT.map(cat => ({
+        ...cat,
+        asignado: 0,
+        gastado: 0
+      })),
+      dineroSinAsignar: 0,
+      ultimaActualizacion: new Date().toISOString()
+    };
+    return initial;
+  }
+
+  return JSON.parse(stored);
+};
+
+/**
+ * Guarda los sobres en localStorage
+ * @param {Object} sobresData - Datos de sobres completos
+ */
+export const saveSobres = (sobresData) => {
+  sobresData.ultimaActualizacion = new Date().toISOString();
+  saveToStorage(KEYS.SOBRES, sobresData);
+};
+
+/**
+ * Sincroniza el dinero sin asignar con el fondo disponible
+ * Llamar cuando se actualice el fondo (nómina, etc)
+ */
+export const sincronizarSobresConFondo = () => {
+  const config = getConfig();
+  const sobresData = getSobres();
+
+  // Calcular total asignado
+  const totalAsignado = sobresData.sobres.reduce((sum, s) => sum + s.asignado, 0);
+
+  // El dinero sin asignar es la diferencia
+  sobresData.dineroSinAsignar = Math.max(0, config.fondoDisponible - totalAsignado);
+
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Asigna dinero a un sobre específico
+ * @param {string} sobreId - ID del sobre
+ * @param {number} cantidad - Cantidad a asignar
+ * @returns {Object} Sobres actualizados
+ */
+export const asignarASobre = (sobreId, cantidad) => {
+  const sobresData = getSobres();
+  const sobre = sobresData.sobres.find(s => s.id === sobreId);
+
+  if (!sobre) {
+    console.error('Sobre no encontrado:', sobreId);
+    return sobresData;
+  }
+
+  // Verificar que hay dinero sin asignar suficiente
+  const cantidadNum = parseFloat(cantidad) || 0;
+  if (cantidadNum > sobresData.dineroSinAsignar) {
+    console.warn('No hay suficiente dinero sin asignar');
+    return sobresData;
+  }
+
+  sobre.asignado += cantidadNum;
+  sobresData.dineroSinAsignar -= cantidadNum;
+
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Establece el monto asignado de un sobre directamente
+ * @param {string} sobreId - ID del sobre
+ * @param {number} nuevoMonto - Nuevo monto total asignado
+ */
+export const establecerAsignacionSobre = (sobreId, nuevoMonto) => {
+  const sobresData = getSobres();
+  const config = getConfig();
+  const sobre = sobresData.sobres.find(s => s.id === sobreId);
+
+  if (!sobre) return sobresData;
+
+  // Calcular nuevo total asignado
+  const totalOtrosSobres = sobresData.sobres
+    .filter(s => s.id !== sobreId)
+    .reduce((sum, s) => sum + s.asignado, 0);
+
+  const nuevoTotal = totalOtrosSobres + nuevoMonto;
+
+  // No permitir asignar más del fondo disponible
+  if (nuevoTotal > config.fondoDisponible) {
+    return sobresData;
+  }
+
+  sobre.asignado = nuevoMonto;
+  sobresData.dineroSinAsignar = config.fondoDisponible - nuevoTotal;
+
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Transfiere dinero entre sobres
+ * @param {string} desdeId - ID del sobre origen
+ * @param {string} haciaId - ID del sobre destino
+ * @param {number} cantidad - Cantidad a transferir
+ */
+export const transferirEntreSobres = (desdeId, haciaId, cantidad) => {
+  const sobresData = getSobres();
+  const sobreDesde = sobresData.sobres.find(s => s.id === desdeId);
+  const sobreHacia = sobresData.sobres.find(s => s.id === haciaId);
+
+  if (!sobreDesde || !sobreHacia) return sobresData;
+
+  const cantidadNum = parseFloat(cantidad) || 0;
+  const disponibleEnOrigen = sobreDesde.asignado - sobreDesde.gastado;
+
+  if (cantidadNum > disponibleEnOrigen) {
+    console.warn('No hay suficiente en el sobre origen');
+    return sobresData;
+  }
+
+  sobreDesde.asignado -= cantidadNum;
+  sobreHacia.asignado += cantidadNum;
+
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Registra un gasto contra un sobre
+ * @param {string} sobreId - ID del sobre
+ * @param {number} cantidad - Cantidad gastada
+ */
+export const registrarGastoEnSobre = (sobreId, cantidad) => {
+  const sobresData = getSobres();
+  const sobre = sobresData.sobres.find(s => s.id === sobreId);
+
+  if (!sobre) return sobresData;
+
+  sobre.gastado += parseFloat(cantidad) || 0;
+
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Crea un nuevo sobre personalizado
+ * @param {Object} nuevoSobre - { nombre, color, tipo }
+ */
+export const crearSobre = (nuevoSobre) => {
+  const sobresData = getSobres();
+
+  const sobre = {
+    id: `custom_${Date.now()}`,
+    nombre: nuevoSobre.nombre,
+    color: nuevoSobre.color || 'gray',
+    tipo: nuevoSobre.tipo || 'variable',
+    asignado: 0,
+    gastado: 0
+  };
+
+  sobresData.sobres.push(sobre);
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Elimina un sobre (solo personalizados)
+ * @param {string} sobreId - ID del sobre a eliminar
+ */
+export const eliminarSobre = (sobreId) => {
+  const sobresData = getSobres();
+
+  // No permitir eliminar sobres predefinidos
+  if (!sobreId.startsWith('custom_')) {
+    console.warn('No se pueden eliminar sobres predefinidos');
+    return sobresData;
+  }
+
+  const sobre = sobresData.sobres.find(s => s.id === sobreId);
+  if (sobre) {
+    // Devolver el dinero asignado al pool sin asignar
+    sobresData.dineroSinAsignar += (sobre.asignado - sobre.gastado);
+  }
+
+  sobresData.sobres = sobresData.sobres.filter(s => s.id !== sobreId);
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+/**
+ * Reinicia los sobres al inicio de un nuevo período
+ * Opcionalmente mantiene los excedentes o los pasa al siguiente mes
+ * @param {boolean} mantenerExcedentes - Si true, los excedentes se suman al nuevo período
+ */
+export const reiniciarSobres = (mantenerExcedentes = true) => {
+  const sobresData = getSobres();
+  const config = getConfig();
+
+  let excedenteTotal = 0;
+
+  sobresData.sobres.forEach(sobre => {
+    const excedente = sobre.asignado - sobre.gastado;
+    if (mantenerExcedentes && excedente > 0) {
+      excedenteTotal += excedente;
+    }
+    sobre.asignado = mantenerExcedentes ? Math.max(0, excedente) : 0;
+    sobre.gastado = 0;
+  });
+
+  sobresData.dineroSinAsignar = config.fondoDisponible - excedenteTotal;
+
+  saveSobres(sobresData);
+  return sobresData;
+};
+
+// ============ METAS DE AHORRO ============
+
+/**
+ * Obtiene todas las metas de ahorro
+ * @returns {Array} Array de metas
+ */
+export const getMetasAhorro = () => {
+  const stored = localStorage.getItem(KEYS.METAS_AHORRO);
+  return stored ? JSON.parse(stored) : [];
+};
+
+/**
+ * Guarda una nueva meta de ahorro
+ * @param {Object} meta - { nombre, objetivo, fechaLimite, progreso, icono, color }
+ */
+export const saveMetaAhorro = (meta) => {
+  const metas = getMetasAhorro();
+
+  const nuevaMeta = {
+    id: Date.now().toString(),
+    nombre: meta.nombre,
+    objetivo: parseFloat(meta.objetivo) || 0,
+    fechaLimite: meta.fechaLimite || null, // formato YYYY-MM
+    progreso: parseFloat(meta.progreso) || 0,
+    icono: meta.icono || '🎯',
+    color: meta.color || 'blue',
+    fechaCreacion: new Date().toISOString(),
+    historialAportes: []
+  };
+
+  metas.push(nuevaMeta);
+  saveToStorage(KEYS.METAS_AHORRO, metas);
+  return nuevaMeta;
+};
+
+/**
+ * Actualiza una meta existente
+ * @param {string} id - ID de la meta
+ * @param {Object} cambios - Campos a actualizar
+ */
+export const updateMetaAhorro = (id, cambios) => {
+  const metas = getMetasAhorro();
+  const index = metas.findIndex(m => m.id === id);
+
+  if (index !== -1) {
+    metas[index] = { ...metas[index], ...cambios };
+    saveToStorage(KEYS.METAS_AHORRO, metas);
+  }
+
+  return metas[index];
+};
+
+/**
+ * Elimina una meta
+ * @param {string} id - ID de la meta
+ */
+export const deleteMetaAhorro = (id) => {
+  const metas = getMetasAhorro().filter(m => m.id !== id);
+  saveToStorage(KEYS.METAS_AHORRO, metas);
+};
+
+/**
+ * Aporta dinero a una meta
+ * @param {string} metaId - ID de la meta
+ * @param {number} cantidad - Cantidad a aportar
+ * @param {string} origen - Descripción del origen (opcional)
+ */
+export const aportarAMeta = (metaId, cantidad, origen = 'Aporte manual') => {
+  const metas = getMetasAhorro();
+  const meta = metas.find(m => m.id === metaId);
+
+  if (!meta) return null;
+
+  const aporte = {
+    fecha: new Date().toISOString(),
+    cantidad: parseFloat(cantidad),
+    origen
+  };
+
+  meta.progreso += parseFloat(cantidad);
+  meta.historialAportes = meta.historialAportes || [];
+  meta.historialAportes.push(aporte);
+
+  saveToStorage(KEYS.METAS_AHORRO, metas);
+  return meta;
+};
+
+/**
+ * Calcula estadísticas de una meta
+ * @param {Object} meta - Objeto de meta
+ * @returns {Object} Estadísticas calculadas
+ */
+export const calcularEstadisticasMeta = (meta) => {
+  const porcentaje = meta.objetivo > 0 ? (meta.progreso / meta.objetivo) * 100 : 0;
+  const restante = Math.max(0, meta.objetivo - meta.progreso);
+
+  // Calcular meses hasta fecha límite
+  let mesesRestantes = null;
+  let aporteMensualNecesario = null;
+
+  if (meta.fechaLimite) {
+    const [year, month] = meta.fechaLimite.split('-').map(Number);
+    const fechaLimite = new Date(year, month - 1, 1);
+    const hoy = new Date();
+
+    mesesRestantes = Math.max(0,
+      (fechaLimite.getFullYear() - hoy.getFullYear()) * 12 +
+      (fechaLimite.getMonth() - hoy.getMonth())
+    );
+
+    aporteMensualNecesario = mesesRestantes > 0 ? restante / mesesRestantes : restante;
+  }
+
+  // Determinar hitos alcanzados
+  const hitos = [];
+  if (porcentaje >= 25) hitos.push({ porcentaje: 25, mensaje: '¡25% alcanzado!' });
+  if (porcentaje >= 50) hitos.push({ porcentaje: 50, mensaje: '¡Mitad del camino!' });
+  if (porcentaje >= 75) hitos.push({ porcentaje: 75, mensaje: '¡75% - Ya casi!' });
+  if (porcentaje >= 100) hitos.push({ porcentaje: 100, mensaje: '🎉 ¡META CUMPLIDA!' });
+
+  const ultimoHito = hitos.length > 0 ? hitos[hitos.length - 1] : null;
+
+  return {
+    porcentaje: Math.min(100, porcentaje),
+    restante,
+    mesesRestantes,
+    aporteMensualNecesario,
+    completada: porcentaje >= 100,
+    hitos,
+    ultimoHito
+  };
 };
