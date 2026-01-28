@@ -151,6 +151,27 @@ select.input {
   cursor: pointer;
 }
 
+/* Select elements - ensure proper dark mode support */
+select {
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+}
+
+select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.dark select {
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+}
+
+.dark select option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
 .label {
   display: block;
   font-size: 0.875rem;
@@ -803,3 +824,86 @@ select.input {
     font-size: 1.125rem;
   }
 }
+
+/* ============================================
+   DARK MODE - Tailwind-style dark: prefix classes
+   These rules target dark:* classes when inside .dark parent
+   ============================================ */
+
+/* Red backgrounds */
+.dark .dark\:bg-red-900\/10 { background-color: rgba(127, 29, 29, 0.1); }
+.dark .dark\:bg-red-900\/20 { background-color: rgba(127, 29, 29, 0.2); }
+.dark .dark\:bg-red-900\/30 { background-color: rgba(127, 29, 29, 0.3); }
+.dark .dark\:bg-red-800 { background-color: #991b1b; }
+.dark .dark\:bg-red-800\/50 { background-color: rgba(153, 27, 27, 0.5); }
+
+/* Red text */
+.dark .dark\:text-red-100 { color: #fee2e2; }
+.dark .dark\:text-red-200 { color: #fecaca; }
+.dark .dark\:text-red-300 { color: #fca5a5; }
+.dark .dark\:text-red-400 { color: #f87171; }
+
+/* Green backgrounds */
+.dark .dark\:bg-green-900\/10 { background-color: rgba(20, 83, 45, 0.1); }
+.dark .dark\:bg-green-900\/20 { background-color: rgba(20, 83, 45, 0.2); }
+.dark .dark\:bg-green-900\/30 { background-color: rgba(20, 83, 45, 0.3); }
+
+/* Green text */
+.dark .dark\:text-green-100 { color: #dcfce7; }
+.dark .dark\:text-green-300 { color: #86efac; }
+.dark .dark\:text-green-400 { color: #4ade80; }
+
+/* Blue backgrounds */
+.dark .dark\:bg-blue-900\/10 { background-color: rgba(30, 58, 138, 0.1); }
+.dark .dark\:bg-blue-900\/20 { background-color: rgba(30, 58, 138, 0.2); }
+.dark .dark\:bg-blue-900\/30 { background-color: rgba(30, 58, 138, 0.3); }
+
+/* Blue borders */
+.dark .dark\:border-blue-700 { border-color: #1d4ed8; }
+.dark .dark\:border-blue-800 { border-color: #1e40af; }
+
+/* Blue text */
+.dark .dark\:text-blue-100 { color: #dbeafe; }
+.dark .dark\:text-blue-200 { color: #bfdbfe; }
+.dark .dark\:text-blue-300 { color: #93c5fd; }
+.dark .dark\:text-blue-400 { color: #60a5fa; }
+
+/* Yellow backgrounds */
+.dark .dark\:bg-yellow-900\/10 { background-color: rgba(113, 63, 18, 0.1); }
+.dark .dark\:bg-yellow-900\/30 { background-color: rgba(113, 63, 18, 0.3); }
+
+/* Yellow text */
+.dark .dark\:text-yellow-100 { color: #fef9c3; }
+.dark .dark\:text-yellow-300 { color: #fde047; }
+
+/* Orange text */
+.dark .dark\:text-orange-100 { color: #ffedd5; }
+.dark .dark\:text-orange-400 { color: #fb923c; }
+
+/* Purple backgrounds */
+.dark .dark\:bg-purple-900\/20 { background-color: rgba(88, 28, 135, 0.2); }
+
+/* Purple borders */
+.dark .dark\:border-purple-700 { border-color: #7e22ce; }
+
+/* Purple text */
+.dark .dark\:text-purple-100 { color: #f3e8ff; }
+
+/* Emerald backgrounds */
+.dark .dark\:bg-emerald-900\/10 { background-color: rgba(6, 78, 59, 0.1); }
+
+/* Emerald text */
+.dark .dark\:text-emerald-100 { color: #d1fae5; }
+
+/* Gray text */
+.dark .dark\:text-gray-300 { color: #d1d5db; }
+
+/* Black backgrounds */
+.dark .dark\:bg-black\/20 { background-color: rgba(0, 0, 0, 0.2); }
+
+/* Ring (focus) */
+.dark .dark\:ring-white { --tw-ring-color: #ffffff; box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px #ffffff; }
+
+/* Hover states in dark mode */
+.dark .dark\:hover\:bg-gray-800:hover { background-color: #1f2937; }
+.dark .dark\:hover\:bg-red-900\/20:hover { background-color: rgba(127, 29, 29, 0.2); }

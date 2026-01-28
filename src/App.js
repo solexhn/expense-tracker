@@ -44,6 +44,12 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem("theme", isDark ? "dark" : "light");
+    // Add/remove .dark class on body for CSS dark mode utilities
+    if (isDark) {
+      document.body.classList.add("dark");
+    } else {
+      document.body.classList.remove("dark");
+    }
   }, [isDark]);
 
   const theme = createTheme({
