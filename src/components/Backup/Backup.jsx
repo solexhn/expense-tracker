@@ -196,21 +196,17 @@ const Backup = ({ onDataRestored }) => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <label htmlFor="file-upload">
-                <Button variant="outline" className="w-full cursor-pointer" asChild>
-                  <span>
-                    <FiUpload className="mr-2 h-4 w-4" />
-                    Seleccionar Archivo
-                  </span>
-                </Button>
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept=".json"
-                  onChange={importarDatos}
-                  className="hidden"
-                />
+              <label htmlFor="file-upload" className="btn btn-secondary w-full cursor-pointer" style={{ display: 'flex' }}>
+                <FiUpload className="mr-2 h-4 w-4" />
+                Seleccionar Archivo
               </label>
+              <input
+                id="file-upload"
+                type="file"
+                accept=".json"
+                onChange={importarDatos}
+                style={{ display: 'none' }}
+              />
               <p className="text-sm text-destructive">⚠️ Sobrescribirá tus datos actuales</p>
             </CardContent>
           </Card>
