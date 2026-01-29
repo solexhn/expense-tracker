@@ -8,9 +8,8 @@ import {
 } from '../../utils/storage';
 import { obtenerResumenMes, obtenerResumenFondo, formatearMoneda, calcularDiaRealCobro, detectarMejorMes } from '../../utils/calculations';
 import MonthlyChart from '../Charts/MonthlyChart';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui-simple/Card';
-import { Button } from '../ui-simple/Button';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiCreditCard, FiEye, FiEyeOff, FiPlus } from 'react-icons/fi';
+import CalendarView from '../Calendar/CalendarView';
+import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiCreditCard, FiEye, FiEyeOff, FiBriefcase, FiCalendar, FiBell, FiCheckCircle } from 'react-icons/fi';
 
 const Dashboard = () => {
   const [resumen, setResumen] = useState({
@@ -157,204 +156,217 @@ const Dashboard = () => {
 
   return (
     <div className="w-full px-4 py-6 space-y-6 overflow-x-clip">
-      <div className="space-y-3">
-        <h1 className="text-3xl font-bold tracking-tight">
+      {/* Header */}
+      <div className="dashboard-header">
+        <h1 className="dashboard-title">
           {viewMode === 'fund' ? 'Resumen del Fondo' : 'Resumen del Mes'}
         </h1>
 
-        {/* Selector de modo: Fondo vs Histórico */}
-        <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
-          <Button
-            variant={viewMode === 'fund' ? 'default' : 'outline'}
+        {/* Mode Toggle */}
+        <div className="mode-toggle">
+          <button
+            className={`mode-toggle__btn ${viewMode === 'fund' ? 'mode-toggle__btn--active' : ''}`}
             onClick={() => setViewMode('fund')}
-            size="sm"
           >
-            💰 Fondo Actual
-          </Button>
-          <Button
-            variant={viewMode === 'historical' ? 'default' : 'outline'}
+            <FiBriefcase className="h-4 w-4" />
+            Fondo Actual
+          </button>
+          <button
+            className={`mode-toggle__btn ${viewMode === 'historical' ? 'mode-toggle__btn--active' : ''}`}
             onClick={() => setViewMode('historical')}
-            size="sm"
           >
-            📅 Vista Histórica
-          </Button>
+            <FiCalendar className="h-4 w-4" />
+            Vista Histórica
+          </button>
         </div>
 
-        {/* Banner para vista histórica */}
+        {/* Info banner for historical view */}
         {viewMode === 'historical' && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-2 rounded text-sm text-blue-800 dark:text-blue-200 flex items-center justify-between">
-            <span>📅 Viendo datos históricos del mes seleccionado</span>
+          <div className="info-banner mt-3">
             <div className="flex items-center gap-2">
-              <label htmlFor="mes-selector" className="text-xs">
-                Mes:
-              </label>
-              <select
-                id="mes-selector"
-                value={mesActual}
-                onChange={(e) => handleMesChange(e.target.value)}
-                className="px-2 py-1 border border-input bg-background text-foreground rounded text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {mesesDisponibles.map(mes => (
-                  <option key={mes} value={mes}>
-                    {new Date(mes + '-01').toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: 'long'
-                    })}
-                  </option>
-                ))}
-              </select>
+              <FiCalendar className="h-4 w-4" />
+              <span>Viendo datos históricos</span>
             </div>
+            <select
+              value={mesActual}
+              onChange={(e) => handleMesChange(e.target.value)}
+              className="info-banner__select"
+            >
+              {mesesDisponibles.map(mes => (
+                <option key={mes} value={mes}>
+                  {new Date(mes + '-01').toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long'
+                  })}
+                </option>
+              ))}
+            </select>
           </div>
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Grid */}
+      <div className="stats-grid">
         {resumen.isFundMode ? (
-          // MODO FONDO: Mostrar balance del fondo
+          // FUND MODE
           <>
-            <Card className="md:col-span-2 border-2 border-green-500/30 bg-green-50 dark:bg-green-900/10">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">💰 Fondo Disponible Actual</CardTitle>
-                <FiPlus className="h-5 w-5 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600">
-                  {formatearMoneda(resumen.fondoDisponible)}
+            {/* Hero Card - Main Balance */}
+            <div className={`hero-card stats-grid__hero ${resumen.fondoDisponible < 0 ? 'hero-card--negative' : ''}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="stat-label">Fondo Disponible</p>
+                  <p className="stat-value">{formatearMoneda(resumen.fondoDisponible)}</p>
+                  <p className="stat-sublabel">
+                    Última nómina: {resumen.ultimaNomina || 'No registrada'}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Última nómina: {resumen.ultimaNomina || 'No registrada'}
-                </p>
-              </CardContent>
-            </Card>
+                <div className="stat-icon">
+                  <FiBriefcase className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gastos Fijos (Mensuales)</CardTitle>
-                <FiCreditCard className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {formatearMoneda(resumen.totalGastosFijos)}
+            {/* Fixed Expenses Card */}
+            <div className="stat-card stat-card--orange">
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Gastos Fijos</p>
+                <div className="stat-icon stat-icon--orange">
+                  <FiCreditCard className="h-5 w-5" />
                 </div>
-                <p className="text-xs text-muted-foreground">Recurrentes cada mes</p>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="stat-value text-orange-600">{formatearMoneda(resumen.totalGastosFijos)}</p>
+              <p className="stat-sublabel">Recurrentes mensuales</p>
+            </div>
 
-            <Card className={resumen.disponibleReal < 0 ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : 'border-green-500'}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Disponible Real</CardTitle>
-                {resumen.disponibleReal < 0 ? (
-                  <FiTrendingDown className="h-4 w-4 text-red-600" />
-                ) : (
-                  <FiTrendingUp className="h-4 w-4 text-green-600" />
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${resumen.disponibleReal < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatearMoneda(resumen.disponibleReal)}
+            {/* Real Available Card */}
+            <div className={`stat-card ${resumen.disponibleReal < 0 ? 'stat-card--red' : 'stat-card--green'}`}>
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Disponible Real</p>
+                <div className={`stat-icon ${resumen.disponibleReal < 0 ? 'stat-icon--red' : 'stat-icon--green'}`}>
+                  {resumen.disponibleReal < 0 ? (
+                    <FiTrendingDown className="h-5 w-5" />
+                  ) : (
+                    <FiTrendingUp className="h-5 w-5" />
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">Fondo - Gastos fijos</p>
-              </CardContent>
-            </Card>
+              </div>
+              <p className={`stat-value ${resumen.disponibleReal < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                {formatearMoneda(resumen.disponibleReal)}
+              </p>
+              <p className="stat-sublabel">Fondo - Gastos fijos</p>
+            </div>
           </>
         ) : (
-          // MODO HISTÓRICO: Mantener cards mensuales existentes
+          // HISTORICAL MODE
           <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
+            {/* Income Card */}
+            <div className="stat-card stat-card--green">
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Ingresos Totales</p>
                 <button
                   onClick={() => setMostrarIngresos(!mostrarIngresos)}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                  className="stat-icon stat-icon--green"
+                  style={{ cursor: 'pointer' }}
                   aria-label={mostrarIngresos ? 'Ocultar ingresos' : 'Mostrar ingresos'}
                 >
                   {mostrarIngresos ? (
-                    <FiEye className="h-4 w-4 text-green-600" />
+                    <FiEye className="h-5 w-5" />
                   ) : (
-                    <FiEyeOff className="h-4 w-4 text-gray-400" />
+                    <FiEyeOff className="h-5 w-5" />
                   )}
                 </button>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {mostrarIngresos ? formatearMoneda(resumen.totalIngresos) : '••••••'}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="stat-value text-green-600">
+                {mostrarIngresos ? formatearMoneda(resumen.totalIngresos) : '••••••'}
+              </p>
+            </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gastos Fijos</CardTitle>
-                <FiCreditCard className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {formatearMoneda(resumen.totalGastosFijos)}
+            {/* Fixed Expenses */}
+            <div className="stat-card stat-card--orange">
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Gastos Fijos</p>
+                <div className="stat-icon stat-icon--orange">
+                  <FiCreditCard className="h-5 w-5" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="stat-value text-orange-600">{formatearMoneda(resumen.totalGastosFijos)}</p>
+            </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gastos Variables</CardTitle>
-                <FiPlus className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {formatearMoneda(resumen.totalGastosVariables)}
+            {/* Variable Expenses */}
+            <div className="stat-card stat-card--blue">
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Gastos Variables</p>
+                <div className="stat-icon stat-icon--blue">
+                  <FiDollarSign className="h-5 w-5" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="stat-value text-blue-600">{formatearMoneda(resumen.totalGastosVariables)}</p>
+            </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gastos Totales</CardTitle>
-                <FiDollarSign className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {formatearMoneda(resumen.totalGastos)}
+            {/* Total Expenses */}
+            <div className="stat-card stat-card--red">
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Gastos Totales</p>
+                <div className="stat-icon stat-icon--red">
+                  <FiTrendingDown className="h-5 w-5" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className="stat-value text-red-500">{formatearMoneda(resumen.totalGastos)}</p>
+            </div>
 
-            <Card className={resumen.saldoRestante < 0 ? 'border-red-500' : 'border-green-500'}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saldo Restante</CardTitle>
-                {resumen.saldoRestante < 0 ? (
-                  <FiTrendingDown className="h-4 w-4 text-red-600" />
-                ) : (
-                  <FiTrendingUp className="h-4 w-4 text-green-600" />
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${resumen.saldoRestante < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatearMoneda(resumen.saldoRestante)}
+            {/* Remaining Balance */}
+            <div className={`stat-card ${resumen.saldoRestante < 0 ? 'stat-card--red' : 'stat-card--green'}`}>
+              <div className="flex items-start justify-between">
+                <p className="stat-label">Saldo Restante</p>
+                <div className={`stat-icon ${resumen.saldoRestante < 0 ? 'stat-icon--red' : 'stat-icon--green'}`}>
+                  {resumen.saldoRestante < 0 ? (
+                    <FiTrendingDown className="h-5 w-5" />
+                  ) : (
+                    <FiTrendingUp className="h-5 w-5" />
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <p className={`stat-value ${resumen.saldoRestante < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                {formatearMoneda(resumen.saldoRestante)}
+              </p>
+            </div>
           </>
         )}
       </div>
 
+      {/* Notifications */}
       {notificaciones.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notificaciones</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {notificaciones.map((n, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                  <div className="text-sm text-foreground">{n.text}</div>
+        <div>
+          <h2 className="section-title">
+            <span className="section-title__icon">
+              <FiBell className="h-4 w-4" />
+            </span>
+            Notificaciones
+          </h2>
+          <div className="notification-card">
+            {notificaciones.map((n, idx) => (
+              <div key={idx} className="notification-item">
+                <div className={`notification-icon ${n.type === 'cobro' ? 'notification-icon--warning' : 'notification-icon--success'}`}>
+                  {n.type === 'cobro' ? (
+                    <FiCreditCard className="h-5 w-5" />
+                  ) : (
+                    <FiCheckCircle className="h-5 w-5" />
+                  )}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="notification-content">
+                  <p className="notification-text">{n.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
+      {/* Chart */}
       <MonthlyChart resumen={resumen} />
+
+      {/* Calendar */}
+      <CalendarView />
     </div>
   );
 };
