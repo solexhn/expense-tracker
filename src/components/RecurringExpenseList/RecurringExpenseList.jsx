@@ -71,6 +71,17 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
     if (onListChange) onListChange();
   };
 
+  const marcarCobrado = (gasto) => {
+    const nuevasCuotas = gasto.cuotasRestantes - 1;
+    const updates = { cuotasRestantes: nuevasCuotas };
+    if (nuevasCuotas === 0) {
+      updates.estado = 'finalizado';
+    }
+    updateGastoFijo(gasto.id, updates);
+    cargarGastos();
+    if (onListChange) onListChange();
+  };
+
   const handleChangeEdicion = (e) => {
     const { name, value } = e.target;
     setFormEdicion(prev => ({
@@ -291,9 +302,22 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                       <div className="pt-2 border-t">
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-foreground">Cuotas:</span>
-                          <span className="font-semibold">
-                            {gasto.cuotasRestantes} / {gasto.cuotasTotales}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">
+                              {gasto.cuotasRestantes} / {gasto.cuotasTotales}
+                            </span>
+                            {gasto.estado === 'activo' && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => marcarCobrado(gasto)}
+                                title="Marcar cuota como cobrada"
+                              >
+                                <FiCheck className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                         {/* Barra de progreso */}
                         <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
