@@ -214,6 +214,36 @@ export const registrarNomina = (cantidad, fecha) => {
   return config;
 };
 
+/**
+ * Establecer un saldo inicial personalizado
+ * Útil para empezar desde una situación real sin perder configuraciones
+ * @param {number|string} cantidad - El saldo actual real
+ * @param {string} motivo - Motivo opcional del ajuste
+ * @returns {object} config actualizada
+ */
+export const establecerSaldoInicial = (cantidad, motivo = 'Ajuste manual') => {
+  const config = getConfig();
+  const montoAnterior = parseFloat(config.fondoDisponible || 0);
+  const montoNuevo = parseFloat(cantidad) || 0;
+
+  // Guardar historial del ajuste
+  config.historialAjustes = config.historialAjustes || [];
+  config.historialAjustes.push({
+    fecha: new Date().toISOString(),
+    montoAnterior,
+    montoNuevo,
+    diferencia: montoNuevo - montoAnterior,
+    motivo
+  });
+
+  // Establecer el nuevo saldo
+  config.fondoDisponible = montoNuevo;
+  config.ultimoAjuste = new Date().toISOString().slice(0, 10);
+
+  saveToStorage(KEYS.CONFIG, config);
+  return config;
+};
+
 // ============ CATEGORÍAS PERSONALIZABLES ============
 export const getClasificacionCategorias = () => {
   const raw = localStorage.getItem(KEYS.CLASIFICACION_CATEGORIAS);
