@@ -5,6 +5,7 @@ import {
   getGastosFijos,
   getGastosVariables,
   getIngresos,
+  getMetasAhorro,
   saveConfig
 } from '../../utils/storage';
 import { getClasificacionCategorias, saveClasificacionCategorias } from '../../utils/storage';
@@ -45,7 +46,8 @@ const Backup = ({ onDataRestored }) => {
       config: getConfig(),
       gastosFijos: getGastosFijos(),
       gastosVariables: getGastosVariables(),
-      ingresos: getIngresos()
+      ingresos: getIngresos(),
+      metasAhorro: getMetasAhorro()
     };
 
     const dataStr = JSON.stringify(datos, null, 2);
@@ -93,6 +95,11 @@ const Backup = ({ onDataRestored }) => {
 
         // Restaurar gastos fijos
         localStorage.setItem('gastosFijos', JSON.stringify(datos.gastosFijos));
+
+        // Restaurar metas de ahorro si existen
+        if (datos.metasAhorro) {
+          localStorage.setItem('metasAhorro', JSON.stringify(datos.metasAhorro));
+        }
 
         // Detectar automáticamente el mejor mes para mostrar
         const mejorMes = detectarMejorMes(datos.gastosVariables, datos.ingresos);

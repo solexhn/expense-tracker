@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getGastosFijos, updateGastoFijo, deleteGastoFijo } from '../../utils/storage';
+import { getGastosFijos, updateGastoFijo, deleteGastoFijo, getConfig, saveConfig } from '../../utils/storage';
 import { formatearMoneda } from '../../utils/calculations';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui-simple/Card';
 import { Button } from '../ui-simple/Button';
@@ -71,12 +71,23 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
     if (onListChange) onListChange();
   };
 
+  const mesActual = new Date().toISOString().slice(0, 7);
+
   const marcarCobrado = (gasto) => {
-    const nuevasCuotas = gasto.cuotasRestantes - 1;
-    const updates = { cuotasRestantes: nuevasCuotas };
-    if (nuevasCuotas === 0) {
-      updates.estado = 'finalizado';
+    const updates = { ultimoCobro: mesActual };
+
+    if (gasto.tipo === 'credito' && gasto.cuotasRestantes > 0) {
+      const nuevasCuotas = gasto.cuotasRestantes - 1;
+      updates.cuotasRestantes = nuevasCuotas;
+      if (nuevasCuotas === 0) {
+        updates.estado = 'finalizado';
+      }
     }
+
+    const config = getConfig();
+    config.fondoDisponible = parseFloat(config.fondoDisponible || 0) - parseFloat(gasto.cantidad);
+    saveConfig(config);
+
     updateGastoFijo(gasto.id, updates);
     cargarGastos();
     if (onListChange) onListChange();
@@ -302,22 +313,9 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                       <div className="pt-2 border-t">
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-foreground">Cuotas:</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">
-                              {gasto.cuotasRestantes} / {gasto.cuotasTotales}
-                            </span>
-                            {gasto.estado === 'activo' && (
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => marcarCobrado(gasto)}
-                                title="Marcar cuota como cobrada"
-                              >
-                                <FiCheck className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
+                          <span className="font-semibold">
+                            {gasto.cuotasRestantes} / {gasto.cuotasTotales}
+                          </span>
                         </div>
                         {/* Barra de progreso */}
                         <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -332,6 +330,27 @@ const RecurringExpenseList = ({ updateTrigger, onListChange }) => {
                     )}
                   </div>
                   
+                  {/* Estado de cobro */}
+                  {gasto.estado === 'activo' && (
+                    <div className="pt-2 border-t">
+                      {gasto.ultimoCobro === mesActual ? (
+                        <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                          <FiCheckCircle className="h-3 w-3" /> Cobrado este mes
+                        </span>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs w-full"
+                          onClick={() => marcarCobrado(gasto)}
+                        >
+                          <FiCheck className="h-3 w-3 mr-1" />
+                          Marcar cobrado
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Acciones */}
                   <div className="flex items-center gap-2 pt-2">
                     <select
