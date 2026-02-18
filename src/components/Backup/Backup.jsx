@@ -13,7 +13,7 @@ import { CLASIFICACION_CATEGORIAS } from '../../utils/financialAnalysis';
 import { detectarMejorMes } from '../../utils/calculations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui-simple/Card';
 import { Button } from '../ui-simple/Button';
-import { FiDownload, FiUpload } from 'react-icons/fi';
+import { FiDownload, FiUpload, FiTrash2 } from 'react-icons/fi';
 
 const Backup = ({ onDataRestored }) => {
   // Categorías personalizables
@@ -39,6 +39,21 @@ const Backup = ({ onDataRestored }) => {
     alert('Categorías reseteadas a valores por defecto');
   };
   
+  const reiniciarDatos = () => {
+    const primera = window.confirm(
+      '⚠️ REINICIAR APP\n\nEsto borrará TODOS tus datos. \nAsegúrate de exportar una copia antes de seguir.\n\n'
+    );
+    if (!primera) return;
+
+    const segunda = window.confirm(
+      '🔴 ÚLTIMA CONFIRMACIÓN\n\nEsta acción es IRREVERSIBLE. No podrás recuperar los datos.\n\n¿Confirmas que quieres borrar todo?'
+    );
+    if (!segunda) return;
+
+    localStorage.clear();
+    window.location.reload();
+  };
+
   const exportarDatos = () => {
     const datos = {
       version: '1.0',
@@ -215,6 +230,25 @@ const Backup = ({ onDataRestored }) => {
                 style={{ display: 'none' }}
               />
               <p className="text-sm text-destructive">⚠️ Sobrescribirá tus datos actuales</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FiTrash2 className="h-5 w-5" />
+                Reiniciar App
+              </CardTitle>
+              <CardDescription>
+                Borra todos los datos y deja la app como nueva.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="danger" onClick={reiniciarDatos} className="w-full">
+                <FiTrash2 className="mr-2 h-4 w-4" />
+                Borrar todos los datos
+              </Button>
+              <p className="text-sm text-destructive mt-2">⚠️ Esta acción no se puede deshacer</p>
             </CardContent>
           </Card>
         </div>

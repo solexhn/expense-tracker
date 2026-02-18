@@ -37,6 +37,147 @@ import {
 import EnvelopeBudgeting from '../EnvelopeBudgeting/EnvelopeBudgeting';
 import SavingsGoals from '../SavingsGoals/SavingsGoals';
 
+// ============ SUGERENCIAS INTELIGENTES ============
+
+const generarSugerenciasInteligentes = (todosGastosFijos, config) => {
+  const sugerencias = [];
+  const activos = todosGastosFijos.filter(g => g.estado === 'activo');
+  const finalizados = todosGastosFijos.filter(g => g.estado === 'finalizado');
+  const incomeBase = config.incomeBase || 0;
+
+  // 1. Microsoft OneDrive redundante si hay Microsoft 365
+  const tiene365 = activos.find(g => g.nombre.toLowerCase().includes('microsoft 365') || g.nombre.toLowerCase().includes('microsoft365'));
+  const tieneOneDrive = activos.find(g => g.nombre.toLowerCase().includes('onedrive'));
+  if (tiene365 && tieneOneDrive) {
+    sugerencias.push({
+      tipo: 'redundancia',
+      prioridad: 1,
+      icono: '💸',
+      titulo: 'OneDrive separado es redundante',
+      descripcion: `Microsoft 365 (${tiene365.cantidad}€/mes) ya incluye 1TB de OneDrive. Tienes además "Microsoft OneDrive" como suscripción independiente (${tieneOneDrive.cantidad}€/mes).`,
+      accion: `Cancela Microsoft OneDrive. Ahorro: ${tieneOneDrive.cantidad}€/mes → ${(tieneOneDrive.cantidad * 12).toFixed(2)}€/año.`,
+      ahorroMensual: tieneOneDrive.cantidad,
+    });
+  }
+
+  // 2. Múltiples servicios de almacenamiento en la nube
+  const almacenamiento = activos.filter(g =>
+    g.categoria === 'Almacenamiento' ||
+    g.nombre.toLowerCase().includes('google one') ||
+    g.nombre.toLowerCase().includes('amazon photos') ||
+    g.nombre.toLowerCase().includes('onedrive')
+  );
+  if (almacenamiento.length >= 3) {
+    const totalAlmacenamiento = almacenamiento.reduce((sum, g) => sum + g.cantidad, 0);
+    const minimo = Math.min(...almacenamiento.map(g => g.cantidad));
+    sugerencias.push({
+      tipo: 'redundancia',
+      prioridad: 2,
+      icono: '☁️',
+      titulo: `${almacenamiento.length} servicios de almacenamiento activos`,
+      descripcion: `Tienes: ${almacenamiento.map(g => `${g.nombre} (${g.cantidad}€/mes)`).join(' · ')}. Total: ${totalAlmacenamiento.toFixed(2)}€/mes.`,
+      accion: 'Elige una plataforma principal. Microsoft 365 incluye OneDrive, y Amazon Photos puede estar cubierto por Amazon Prime. Podrías reducir esto a 1 servicio.',
+      ahorroMensual: totalAlmacenamiento - minimo,
+    });
+  }
+
+  // 3. Amazon Photos (posiblemente incluido en Prime)
+  const amazonPhotos = activos.find(g => g.nombre.toLowerCase().includes('amazon photos'));
+  if (amazonPhotos && !tiene365) {
+    sugerencias.push({
+      tipo: 'atencion',
+      prioridad: 3,
+      icono: '📦',
+      titulo: 'Amazon Photos podría ser gratuito',
+      descripcion: `Pagas ${amazonPhotos.cantidad}€/mes por Amazon Photos de forma independiente.`,
+      accion: 'Verifica si tienes Amazon Prime: en ese caso, Amazon Photos ya está incluido sin coste adicional. Potencial ahorro de ' + amazonPhotos.cantidad + '€/mes.',
+      ahorroMensual: amazonPhotos.cantidad,
+    });
+  }
+
+  // 4. Resumen entretenimiento
+  const entretenimiento = activos.filter(g => g.categoria === 'Entretenimiento');
+  if (entretenimiento.length >= 2) {
+    const totalEntretenimiento = entretenimiento.reduce((sum, g) => sum + g.cantidad, 0);
+    const porcentajeNomina = incomeBase > 0 ? (totalEntretenimiento / incomeBase) * 100 : 0;
+    sugerencias.push({
+      tipo: porcentajeNomina > 5 ? 'atencion' : 'positivo',
+      prioridad: 4,
+      icono: '🎮',
+      titulo: `Entretenimiento: ${totalEntretenimiento.toFixed(2)}€/mes (${porcentajeNomina.toFixed(1)}% de nómina)`,
+      descripcion: `${entretenimiento.length} suscripciones activas: ${entretenimiento.map(g => g.nombre).join(', ')}.`,
+      accion: porcentajeNomina > 5
+        ? '¿Usas todas activamente? Considera rotar servicios (p.ej. pausar uno 3 meses y reactivar otro).'
+        : 'Porcentaje dentro de lo razonable. Sigue monitorizando si añades nuevas suscripciones.',
+      ahorroMensual: null,
+    });
+  }
+
+  // 5. Celebrar deudas liquidadas
+  const creditosLiquidados = finalizados.filter(g => g.tipo === 'credito' && g.cuotasRestantes === 0);
+  if (creditosLiquidados.length > 0) {
+    const flujoLiberado = creditosLiquidados.reduce((sum, g) => sum + g.cantidad, 0);
+    sugerencias.push({
+      tipo: 'positivo',
+      prioridad: 5,
+      icono: '🎉',
+      titulo: `${creditosLiquidados.length} deudas eliminadas`,
+      descripcion: `Deudas cerradas: ${creditosLiquidados.map(g => g.nombre).join(', ')}.`,
+      accion: `Has liberado ${flujoLiberado.toFixed(2)}€/mes en flujo de caja que antes iban a intereses. Eso son ${(flujoLiberado * 12).toFixed(2)}€ más al año en tu bolsillo.`,
+      ahorroMensual: flujoLiberado,
+    });
+  }
+
+  // 6. Ratio deuda/ingreso actual
+  const deudas = activos.filter(g => g.tipo === 'credito');
+  if (deudas.length > 0 && incomeBase > 0) {
+    const totalDeudas = deudas.reduce((sum, g) => sum + g.cantidad, 0);
+    const ratioDeuda = (totalDeudas / incomeBase) * 100;
+    if (ratioDeuda < 20) {
+      sugerencias.push({
+        tipo: 'positivo',
+        prioridad: 6,
+        icono: '✅',
+        titulo: `Ratio deuda/ingreso saludable: ${ratioDeuda.toFixed(1)}%`,
+        descripcion: `Tu cuota mensual de deuda (${totalDeudas.toFixed(2)}€) representa el ${ratioDeuda.toFixed(1)}% de tu nómina (${incomeBase.toFixed(2)}€).`,
+        accion: 'El umbral de riesgo se sitúa en el 30-35%. Estás muy por debajo, lo que te da margen real de maniobra y capacidad de ahorro.',
+        ahorroMensual: null,
+      });
+    } else if (ratioDeuda > 30) {
+      sugerencias.push({
+        tipo: 'atencion',
+        prioridad: 1,
+        icono: '⚠️',
+        titulo: `Ratio deuda/ingreso elevado: ${ratioDeuda.toFixed(1)}%`,
+        descripcion: `Tu cuota mensual de deuda (${totalDeudas.toFixed(2)}€) representa el ${ratioDeuda.toFixed(1)}% de tu nómina.`,
+        accion: 'Prioriza eliminar deudas antes de adquirir nuevos compromisos. Considera aplicar la estrategia avalanche para reducir intereses.',
+        ahorroMensual: null,
+      });
+    }
+  }
+
+  // 7. Detectar suscripciones de trabajo duplicadas (IA)
+  const susIA = activos.filter(g =>
+    g.nombre.toLowerCase().includes('claude') ||
+    g.nombre.toLowerCase().includes('chatgpt') ||
+    g.nombre.toLowerCase().includes('openai')
+  );
+  if (susIA.length >= 2) {
+    const totalIA = susIA.reduce((sum, g) => sum + g.cantidad, 0);
+    sugerencias.push({
+      tipo: 'redundancia',
+      prioridad: 2,
+      icono: '🤖',
+      titulo: `${susIA.length} asistentes IA activos`,
+      descripcion: `Tienes: ${susIA.map(g => `${g.nombre} (${g.cantidad}€/mes)`).join(' · ')}. Total: ${totalIA.toFixed(2)}€/mes.`,
+      accion: '¿Usas ambos de forma regular? Si uno cubre el 90% de tus necesidades, considera cancelar el otro.',
+      ahorroMensual: Math.min(...susIA.map(g => g.cantidad)),
+    });
+  }
+
+  return sugerencias.sort((a, b) => a.prioridad - b.prioridad);
+};
+
 /**
  * Componente de Análisis Financiero Mejorado
  *
@@ -45,6 +186,7 @@ import SavingsGoals from '../SavingsGoals/SavingsGoals';
  * - Metas de ahorro motivadoras - PRIORIDAD 2
  * - Proyección de deudas con snowball/avalanche - PRIORIDAD 3
  * - Alertas en tiempo real y pronóstico - PRIORIDAD 4
+ * - Sugerencias inteligentes automáticas - PRIORIDAD 5
  */
 const FinancialAnalysis = ({ updateTrigger }) => {
   const [analisis, setAnalisis] = useState(null);
@@ -61,13 +203,18 @@ const FinancialAnalysis = ({ updateTrigger }) => {
 
   // Sección activa (tabs internos)
   const [seccionActiva, setSeccionActiva] = useState('sobres');
+  const [sugerenciasInteligentes, setSugerenciasInteligentes] = useState([]);
 
   const cargarAnalisis = useCallback(() => {
     try {
       setLoading(true);
 
       const config = getConfig();
-      const gastosFijos = getGastosFijos().filter((g) => g.estado === 'activo');
+      const todosGastosFijos = getGastosFijos();
+      const gastosFijos = todosGastosFijos.filter((g) => g.estado === 'activo');
+
+      // Generar sugerencias inteligentes con todos los gastos (activos + finalizados)
+      setSugerenciasInteligentes(generarSugerenciasInteligentes(todosGastosFijos, config));
 
       // Calcular proyección de deudas con estrategia seleccionada
       const proyeccion = calcularProyeccionConEstrategia(gastosFijos, estrategiaDeuda);
@@ -400,6 +547,20 @@ const FinancialAnalysis = ({ updateTrigger }) => {
           <FiPieChart className="h-4 w-4 mr-2" />
           50/30/20
         </Button>
+        <Button
+          variant={seccionActiva === 'sugerencias' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSeccionActiva('sugerencias')}
+          className="flex-1 md:flex-none relative"
+        >
+          <FiZap className="h-4 w-4 mr-2" />
+          Sugerencias
+          {sugerenciasInteligentes.filter(s => s.tipo === 'redundancia' || s.tipo === 'atencion').length > 0 && (
+            <span className="ml-1.5 bg-orange-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
+              {sugerenciasInteligentes.filter(s => s.tipo === 'redundancia' || s.tipo === 'atencion').length}
+            </span>
+          )}
+        </Button>
       </div>
 
       {/* SECCIÓN: SISTEMA DE SOBRES */}
@@ -663,6 +824,114 @@ const FinancialAnalysis = ({ updateTrigger }) => {
                 </CardContent>
               </Card>
             </>
+          )}
+        </div>
+      )}
+
+      {/* SECCIÓN: SUGERENCIAS INTELIGENTES */}
+      {seccionActiva === 'sugerencias' && (
+        <div className="space-y-4">
+          {/* Header con resumen de ahorro potencial */}
+          {(() => {
+            const ahorroTotal = sugerenciasInteligentes.reduce((sum, s) => sum + (s.ahorroMensual || 0), 0);
+            const accionables = sugerenciasInteligentes.filter(s => s.tipo === 'redundancia' || s.tipo === 'atencion');
+            return (
+              <Card className="border-2 border-blue-200 bg-blue-50 dark:bg-blue-900/10">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                      <FiZap className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-blue-900 dark:text-blue-100">
+                        Sugerencias Inteligentes
+                      </h3>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Análisis automático de optimización financiera · {sugerenciasInteligentes.length} hallazgos
+                      </p>
+                    </div>
+                  </div>
+                  {ahorroTotal > 0 && accionables.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white/70 dark:bg-black/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">Ahorro potencial mensual</p>
+                        <p className="text-2xl font-bold text-green-600">{ahorroTotal.toFixed(2)} EUR</p>
+                      </div>
+                      <div className="bg-white/70 dark:bg-black/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">Ahorro potencial anual</p>
+                        <p className="text-2xl font-bold text-green-600">{(ahorroTotal * 12).toFixed(2)} EUR</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Tarjetas de sugerencias */}
+          {sugerenciasInteligentes.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-6">
+                  <FiCheckCircle className="h-12 w-12 mx-auto text-green-500 mb-3" />
+                  <p className="font-semibold text-lg">Todo en orden</p>
+                  <p className="text-sm text-muted-foreground">No se detectan redundancias ni puntos de mejora en este momento.</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            sugerenciasInteligentes.map((sug, index) => {
+              const borderColor = sug.tipo === 'positivo'
+                ? 'border-green-200 bg-green-50 dark:bg-green-900/10'
+                : sug.tipo === 'redundancia'
+                ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/10'
+                : sug.tipo === 'atencion'
+                ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10'
+                : 'border-blue-200 bg-blue-50 dark:bg-blue-900/10';
+
+              const labelColor = sug.tipo === 'positivo'
+                ? 'bg-green-100 text-green-800 border-green-200'
+                : sug.tipo === 'redundancia'
+                ? 'bg-orange-100 text-orange-800 border-orange-200'
+                : sug.tipo === 'atencion'
+                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                : 'bg-blue-100 text-blue-800 border-blue-200';
+
+              const labelText = sug.tipo === 'positivo' ? 'Buenas noticias'
+                : sug.tipo === 'redundancia' ? 'Redundancia detectada'
+                : sug.tipo === 'atencion' ? 'Atención'
+                : 'Sugerencia';
+
+              return (
+                <Card key={index} className={`border ${borderColor}`}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl shrink-0">{sug.icono}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge className={`text-xs border ${labelColor}`}>
+                            {labelText}
+                          </Badge>
+                          {sug.ahorroMensual != null && (
+                            <Badge variant="outline" className="text-xs text-green-700 border-green-300">
+                              Ahorro: {sug.ahorroMensual.toFixed(2)} EUR/mes
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="font-semibold mb-1">{sug.titulo}</p>
+                        <p className="text-sm text-muted-foreground mb-2">{sug.descripcion}</p>
+                        <div className="bg-white/60 dark:bg-black/20 rounded-md p-2 border border-border/50">
+                          <p className="text-sm font-medium">
+                            <span className="text-muted-foreground mr-1">Accion:</span>
+                            {sug.accion}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       )}
